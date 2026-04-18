@@ -10,17 +10,21 @@ with library-oriented API.
 
 ## Status
 
-Work in progress. See the 6-phase roadmap in
-[`docs/plan.md`](docs/plan.md) (if present) or the issues tracker.
+All 6 phases of the initial port are done. 30 Catch2 tests green on
+macOS/clang (CI matrix: Ubuntu + macOS × Debug + Release).
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Thomas + 1D finite-volume Dirichlet + Catch2 harness | in progress |
-| 2 | Dielectric (harmonic mean) + 2D SOR red-black | planned |
-| 3 | Spectral DST 1D/2D via FFTW | planned |
-| 4 | Quadtree AMR (Morton indexing) + SOR on AMR | planned |
-| 5 | V-cycle multigrid, composite 2-grid on AMR | planned |
-| 6 | Benchmarks + pybind11 + JSON snapshots | planned |
+| 1 | Thomas + 1D finite-volume Dirichlet + Catch2 harness | done |
+| 2 | Dielectric (harmonic mean) + 2D SOR red-black | done |
+| 3 | Spectral DST 1D/2D via FFTW | done |
+| 4 | Quadtree AMR (Morton indexing) + SOR on AMR | done |
+| 5 | V-cycle multigrid, composite 2-grid on AMR | done |
+| 6 | Benchmarks (std::chrono) + JSON snapshots + reference tests | done |
+
+pybind11 bindings are intentionally not provided; Python validation is
+done via JSON snapshot files written by `python/dump_reference.py` and
+loaded in the C++ test suite.
 
 ## Requirements
 
