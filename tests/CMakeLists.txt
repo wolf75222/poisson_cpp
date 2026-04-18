@@ -23,7 +23,9 @@ if(POISSON_HAVE_FFTW3)
 endif()
 
 add_executable(tests_poisson ${TEST_SOURCES})
-target_link_libraries(tests_poisson PRIVATE poisson::poisson Catch2::Catch2WithMain)
+target_link_libraries(tests_poisson
+  PRIVATE poisson::poisson Catch2::Catch2WithMain
+          nlohmann_json::nlohmann_json)
 target_compile_options(tests_poisson PRIVATE
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
     -Wall -Wextra -Wpedantic>)

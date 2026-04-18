@@ -1,0 +1,18 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Only publicly-used dependencies need finding here. nlohmann_json is used
+# privately by the library (not exposed in headers) and is therefore not a
+# transitive requirement.
+find_dependency(Eigen3 CONFIG)
+
+# FFTW3 is optional: only look it up if the library was built with it.
+set(POISSON_HAVE_FFTW3 @POISSON_HAVE_FFTW3@)
+if(POISSON_HAVE_FFTW3)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+  find_dependency(FFTW3 MODULE)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/poissonTargets.cmake")
+check_required_components(poisson)

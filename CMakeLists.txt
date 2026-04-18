@@ -91,7 +91,10 @@ target_include_directories(poisson
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(poisson PUBLIC Eigen3::Eigen nlohmann_json::nlohmann_json)
+target_link_libraries(poisson PUBLIC Eigen3::Eigen)
+# nlohmann_json is not a dependency of the compiled library — it is only
+# used by the header `poisson/io/json_io.hpp` (excluded from install) and
+# by downstream tests that need JSON snapshot I/O.
 
 target_compile_features(poisson PUBLIC cxx_std_20)
 target_compile_options(poisson PRIVATE
@@ -115,4 +118,47 @@ option(POISSON_BUILD_TESTS "Build Catch2 unit tests" ON)
 if(POISSON_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# -----------------------------------------------------------------------------
+# Install + package config (for downstream find_package(poisson))
+# -----------------------------------------------------------------------------
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+install(TARGETS poisson
+  EXPORT  poissonTargets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(DIRECTORY include/poisson
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  PATTERN "io/json_io.hpp" EXCLUDE)
+
+install(EXPORT poissonTargets
+  FILE        poissonTargets.cmake
+  NAMESPACE   poisson::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poisson)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/poissonConfigVersion.cmake"
+  VERSION   ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/poissonConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/poissonConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poisson)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/poissonConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/poissonConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poisson)
+
+if(POISSON_HAVE_FFTW3)
+  install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindFFTW3.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poisson)
 endif()
