@@ -38,6 +38,17 @@ if(NOT TARGET Eigen3::Eigen)
     $<BUILD_INTERFACE:${eigen_headers_SOURCE_DIR}>)
 endif()
 
+# nlohmann/json for snapshot I/O.
+find_package(nlohmann_json 3.10 CONFIG QUIET)
+if(NOT nlohmann_json_FOUND)
+  message(STATUS "nlohmann_json not found; fetching via FetchContent")
+  FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+  set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
 # FFTW3 (GPL) for the spectral solvers. Optional: the rest of the library
 # builds without it.
 find_package(FFTW3 MODULE)
@@ -80,7 +91,7 @@ target_include_directories(poisson
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(poisson PUBLIC Eigen3::Eigen)
+target_link_libraries(poisson PUBLIC Eigen3::Eigen nlohmann_json::nlohmann_json)
 
 target_compile_features(poisson PUBLIC cxx_std_20)
 target_compile_options(poisson PRIVATE
@@ -94,6 +105,11 @@ target_compile_options(poisson PUBLIC
 # Examples and tests
 # -----------------------------------------------------------------------------
 add_subdirectory(examples)
+
+option(POISSON_BUILD_BENCHMARKS "Build simple chrono-based benchmarks" ON)
+if(POISSON_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
+endif()
 
 option(POISSON_BUILD_TESTS "Build Catch2 unit tests" ON)
 if(POISSON_BUILD_TESTS)
