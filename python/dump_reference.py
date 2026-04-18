@@ -54,6 +54,56 @@ def solve_poisson_1d(rho, uL, uR, L, eps0=1.0):
     return thomas(a, b, c, d)
 
 
+def solve_poisson_1d_dielectric(rho, eps_r, uL, uR, L, eps0=1.0):
+    """Port of the Python TP2 variable-permittivity solver."""
+    N = len(rho)
+    dx = L / (N - 1)
+    eps_face = 2.0 * eps_r[1:] * eps_r[:-1] / (eps_r[1:] + eps_r[:-1]) * eps0 / dx**2
+    a = np.zeros(N); b = np.zeros(N); c = np.zeros(N)
+    d = -np.asarray(rho, dtype=float)
+    a[1:]   = eps_face
+    c[:-1]  = eps_face
+    for i in range(1, N - 1):
+        b[i] = -(a[i] + c[i])
+    a[0] = c[0] = 0.0; b[0] = 1.0; d[0] = uL
+    a[-1] = c[-1] = 0.0; b[-1] = 1.0; d[-1] = uR
+    return thomas(a, b, c, d)
+
+
+def sor_2d(N, dx, rho, uL, uR, omega=None, tol=1e-8, max_iter=50000):
+    """Port of TP3 `sor_2d` with constant eps (= 1) and the same Dirichlet/
+    Neumann conventions as the notebook."""
+    if omega is None:
+        omega = 2.0 / (1.0 + np.sin(np.pi / N))
+    # Uniform eps = 1, so Vw = Ve = Vn = Vs = 1/dx^2 for interior faces,
+    # and Vw[0,:] = Ve[-1,:] = 2/dx^2 for the Dirichlet ghost faces.
+    dx2 = dx * dx
+    Ve = np.full((N, N), 1.0 / dx2);  Ve[-1, :] = 2.0 / dx2
+    Vw = np.full((N, N), 1.0 / dx2);  Vw[0, :]  = 2.0 / dx2
+    Vn = np.full((N, N), 1.0 / dx2);  Vn[:, -1] = 0.0  # Neumann: no ghost
+    Vs = np.full((N, N), 1.0 / dx2);  Vs[:,  0] = 0.0
+    Vc = Ve + Vw + Vn + Vs
+
+    V = np.zeros((N, N))
+    parity = (np.indices((N, N)).sum(axis=0) & 1).astype(bool)
+    masks = (~parity, parity)
+    for k in range(max_iter):
+        V_old = V.copy()
+        for mask in masks:
+            s = np.zeros_like(V)
+            s[1:,  :] += Vw[1:,  :] * V[:-1, :]
+            s[:-1, :] += Ve[:-1, :] * V[1:,  :]
+            s[:, 1:]  += Vs[:, 1:]  * V[:, :-1]
+            s[:, :-1] += Vn[:, :-1] * V[:, 1:]
+            s[0,  :]  += Vw[0,  :]  * uL
+            s[-1, :]  += Ve[-1, :] * uR
+            V_gs = (s + rho) / Vc
+            V[mask] = (1 - omega) * V[mask] + omega * V_gs[mask]
+        if np.max(np.abs(V - V_old)) < tol:
+            return V, k + 1
+    return V, max_iter
+
+
 def dump_thomas(outdir: pathlib.Path) -> None:
     rng = np.random.default_rng(42)
     N = 40
@@ -88,6 +138,39 @@ def dump_solver1d_uniform(outdir: pathlib.Path) -> None:
     print(f"wrote {path}")
 
 
+def dump_dielectric(outdir: pathlib.Path) -> None:
+    N = 40
+    L, uL, uR = 1.0, 10.0, 0.0
+    n_diel = 4
+    eps_r = np.ones(N)
+    eps_r[:n_diel] = 5.0
+    eps_r[-n_diel:] = 5.0
+    rho = np.zeros(N)
+    V = solve_poisson_1d_dielectric(rho, eps_r, uL, uR, L)
+    path = outdir / "dielectric_zero_rho_N40.json"
+    path.write_text(json.dumps({
+        "N": N, "L": L, "uL": uL, "uR": uR, "eps0": 1.0,
+        "eps_r": eps_r.tolist(), "rho": rho.tolist(), "V_ref": V.tolist(),
+        "description": "TP2 dielectric layers, no charge, Dirichlet 10/0.",
+    }, indent=2))
+    print(f"wrote {path}")
+
+
+def dump_sor2d(outdir: pathlib.Path) -> None:
+    N = 24
+    L, uL, uR = 1.0, 0.0, 1.0
+    dx = L / N
+    rho = np.zeros((N, N))
+    V, iters = sor_2d(N, dx, rho, uL, uR, tol=1e-10)
+    path = outdir / "sor2d_linear_N24.json"
+    path.write_text(json.dumps({
+        "N": N, "L": L, "uL": uL, "uR": uR, "iterations": iters,
+        "V_ref": V.tolist(),
+        "description": "TP3 SOR 2D, no charge, linear profile, N=24.",
+    }, indent=2))
+    print(f"wrote {path}")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--outdir", type=pathlib.Path, default=DEFAULT_OUTDIR)
@@ -96,6 +179,8 @@ def main(argv: list[str]) -> int:
 
     dump_thomas(args.outdir)
     dump_solver1d_uniform(args.outdir)
+    dump_dielectric(args.outdir)
+    dump_sor2d(args.outdir)
     return 0
 
 
