@@ -190,6 +190,49 @@ propagates information one cell).
 | Variable ε, needs cheap iteration | **PCG (Jacobi)** | Preconditioner helps when diag varies |
 | Complex BCs, need SOR features (ω auto) | **Solver2D SOR** | Matches existing Python workflows |
 
+### CG hot-loop optimisation: profile-guided diag precomputation
+
+Profiled with `sample` (macOS built-in statistical sampler) on
+`benchmarks/profile_cg`, a harness that runs `solve_poisson_cg` in a
+tight loop so the sampler catches the hot functions.
+
+**Before** (`apply_neg_laplacian` computed the diagonal per-cell inside
+the inner loop):
+
+```
+apply_neg_laplacian           2698 samples  (~27 %)
+Eigen dense assignment (AXPY) 2290 samples  (~23 %)
+```
+
+**Hypothesis**: the stencil diagonal (5/h² at Dirichlet rows, 4/h²
+interior) is a pure function of `(i, j)` — recomputing it every call
+is wasted work AND the `diag += ...` branches in the inner loop
+prevent auto-vectorisation (similar to the ternary issue in
+`fv::Solver2D` documented above).
+
+**Fix**: precompute `diag_mat` once in `solve_poisson_cg`, pass by ref
+to `apply_neg_laplacian_with_diag`. Inner loop now only has `s +=
+V(...) * dx2_inv` predicated adds — same pattern as `gs_smooth`
+which clang vectorises cleanly (307 NEON instructions).
+
+**Measured A/B** (median of 3 runs, tol = 1e-8):
+
+| N    | Before (ms) | After (ms) | Δ      |
+|------|-------------|------------|--------|
+| 128² | 7.8         | 7.25       | **−7 %** |
+| 256² | 63.2        | 60.0       | **−5 %** |
+| 512² | 638.7       | 521        | **−18 %** |
+
+Iteration counts unchanged (183, 368, 734 — this is a pure
+per-iteration win). 66/66 tests still pass. Re-profile confirms
+`apply_neg_laplacian_with_diag` dropped from 2698 to 2057 samples
+(−24 %) and the AXPY kernel from 2290 to 1712 (−25 %, helped
+indirectly because fewer total samples per iteration).
+
+Tried but reverted:
+- `#pragma clang loop unroll_count(4)` on the i loop: +4-5 % regression
+  at N=128/256, ~3 % gain at N=512. Not a clear win; reverted.
+
 ### Jacobi preconditioner caveat
 
 On the uniform-ε problems the library currently benchmarks, Jacobi
