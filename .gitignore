@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+build-*/
+cmake-build-*/
+_deps/
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
