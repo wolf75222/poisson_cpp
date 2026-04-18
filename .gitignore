@@ -21,3 +21,10 @@ compile_commands.json
 __pycache__/
 *.pyc
 .venv/
+
+# macOS
+.DS_Store
+
+# Instruments traces
+*.trace/
+Launch_*.trace
