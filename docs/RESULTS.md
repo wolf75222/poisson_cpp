@@ -1,10 +1,9 @@
-# Résultats et interprétation (style TPs)
+# Résultats
 
-Ces figures reproduisent, à partir de la librairie C++, les visualisations
-des notebooks `CourseOnPoisson/notebooks/TP{1..5}_*.ipynb`. Elles sont
-générées par [`python/plot_tp_style.py`](../python/plot_tp_style.py) qui
-appelle la librairie soit via le module pybind11 (`poisson_cpp`), soit via
-les snapshots JSON écrits par `poisson_demo --output`.
+Figures des notebooks `CourseOnPoisson/notebooks/TP{1..5}_*.ipynb`
+reproduites en C++, générées par
+[`python/plot_tp_style.py`](../python/plot_tp_style.py) (via pybind11
+ou les snapshots JSON).
 
 ## Reproduire
 
@@ -312,18 +311,17 @@ report, history = pc.solve_poisson_cg(
 
 ---
 
-## Pourquoi utiliser pybind11 plutôt que juste le CLI JSON ?
+## pybind11 vs CLI JSON
 
-Le **CLI** (`poisson_demo`) reste le chemin canonique pour les snapshots
-figés et les tests de non-régression. Le **module pybind11**
-(`poisson_cpp`) est plus pratique quand on veut :
+Le CLI (`poisson_demo`) sert aux snapshots figés et aux tests de
+non-régression. Le module `poisson_cpp` est utile pour :
 
-- Scanner des paramètres (ω, σ, N) sans recompiler ni relancer le binaire.
-- Combiner plusieurs solveurs dans une même session (ex. DST en référence
-  + SOR en itératif, comme le font les TPs).
-- Tracer directement les résultats sans passer par du sérialize/parse.
+- Scanner des paramètres (ω, σ, N) sans recompiler.
+- Combiner plusieurs solveurs dans une même session (DST en référence
+  + SOR en itératif, comme les TPs).
+- Tracer directement sans passer par sérialize/parse.
 
-Exemple interactif :
+Exemple :
 ```python
 import numpy as np
 import poisson_cpp as pc
@@ -335,10 +333,9 @@ V, report = sor.solve(rho, tol=1e-10)
 print(report)              # SORReport(iterations=965, residual=9.77e-11)
 ```
 
-Les matrices Eigen sont auto-converties en `numpy.ndarray` (avec un copy
-pour respecter l'ordre colonnes/lignes). La méthode `.solve_inplace(V, rho)`
-accepte des arrays Fortran-ordered (`order='F'`) et évite la copie pour
-les boucles très chaudes.
+Les matrices Eigen sont auto-converties en `numpy.ndarray` (avec copie
+pour l'ordre colonnes/lignes). `.solve_inplace(V, rho)` accepte des arrays
+Fortran-ordered (`order='F'`) et évite la copie.
 
 ## Pybind11 build flags
 

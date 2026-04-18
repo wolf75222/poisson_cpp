@@ -138,7 +138,7 @@ rho  = np.zeros((64, 64))
 V, report = sor.solve(rho, tol=1e-10)      # returns (V, SORReport)
 print(report)                              # SORReport(iterations=..., residual=...)
 
-# ---- 3. Conjugate Gradient (4.2× plus rapide que SOR pour N=128) -------
+# ---- 3. Conjugate Gradient --------------------------------------------
 V_cg = np.zeros((128, 128), order="F")     # Fortran-order pour Eigen in-place
 grid = pc.Grid2D(1.0, 1.0, 128, 128)
 rep, hist = pc.solve_poisson_cg(
@@ -154,7 +154,7 @@ if pc.has_fftw3:
     print("DST2D V range:", V_dst.min(), V_dst.max())
 ```
 
-### Visualisation des résultats (style notebooks TP)
+### Plots
 
 ```bash
 python3 python/plot_tp_style.py all           # TP1..TP5 reproduites
@@ -162,8 +162,8 @@ python3 python/plot_cg.py                     # convergence CG vs SOR
 python3 python/make_banner.py                 # bannière AMR multi-charges
 ```
 
-Les figures sortent dans [`docs/figures/`](docs/figures/) et sont
-interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
+Figures dans [`docs/figures/`](docs/figures/), interprétations dans
+[`docs/RESULTS.md`](docs/RESULTS.md).
 
 ---
 
@@ -184,8 +184,8 @@ interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ## Performance
 
-Benchmarks et optimisations détaillés dans [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
-Résumé des gains principaux, validés par A/B avec `sample` / `xctrace` :
+Détails dans [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md). A/B mesurés
+avec `sample` / `xctrace` :
 
 - `mg::gs_smooth` N=128 : in-place red-black, −68 %.
 - `Solver2D::solve` N=128 : in-place red-black + `Vc_inv_` précomputé, −46 %.
@@ -197,10 +197,3 @@ Résumé des gains principaux, validés par A/B avec `sample` / `xctrace` :
 ## License
 
 BSD-3-Clause. Voir [LICENSE](LICENSE).
-
-## Références
-
-- Cours Poisson : `CourseOnPoisson/notebooks/TP{1..5}_*.ipynb`.
-- Benchmark Fourier : Jackson, *Classical Electrodynamics*, ch. 2.
-- AMR FV : Berger & Colella, *Local adaptive mesh refinement for
-  shock hydrodynamics*, JCP 82 (1989).

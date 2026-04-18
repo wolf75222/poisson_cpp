@@ -98,8 +98,7 @@ poisson_cpp/
 
 ## Conventions de grille par module
 
-Le projet mélange **deux conventions** de discrétisation. Chacune est
-documentée dans le header correspondant ; ne pas les mélanger.
+Deux conventions selon le module ; ne pas les mélanger.
 
 ```mermaid
 graph LR
@@ -125,11 +124,11 @@ graph LR
 
 | Module | Convention | BC |
 |---|---|---|
-| `fv::Solver1D`, `fv::solve_poisson_1d` (dielectric) | **Node-centered**, N nœuds | Dirichlet aux 2 extrémités |
-| `fv::Solver2D` | **Cell-centered**, Nx×Ny cellules | Dirichlet en x (uL, uR), Neumann en y |
-| `spectral::DSTSolver1D/2D` | **Node-centered**, N internes (x_i = i·h) | Dirichlet homogène partout |
-| `amr::Quadtree` | **Cell-centered** (leaves à profondeur variable) | Dirichlet V = 0 au bord du domaine |
-| `mg::vcycle_uniform` | **Cell-centered** (même que gs_smooth) | Dirichlet V = 0 sur les 4 faces |
+| `fv::Solver1D`, `fv::solve_poisson_1d` (dielectric) | Node-centered, N nœuds | Dirichlet aux 2 extrémités |
+| `fv::Solver2D` | Cell-centered, Nx×Ny cellules | Dirichlet en x (uL, uR), Neumann en y |
+| `spectral::DSTSolver1D/2D` | Node-centered, N internes (x_i = i·h) | Dirichlet homogène partout |
+| `amr::Quadtree` | Cell-centered (leaves à profondeur variable) | Dirichlet V = 0 au bord du domaine |
+| `mg::vcycle_uniform` | Cell-centered (comme gs_smooth) | Dirichlet V = 0 sur les 4 faces |
 
 ## Stencil FV hétérogène (AMR)
 
@@ -151,14 +150,14 @@ graph TB
 
 | Configuration du voisin | `diag +=` | `off =` (par voisin) |
 |---|---|---|
-| Bord du domaine (Dirichlet V = 0) | **2** | 0 |
-| Même niveau | **1** | 1 |
-| Plus grossier (1 voisin) | **2/3** | 2/3 |
-| Plus fin (2 voisins) | **4/3** | 2/3 chacun |
+| Bord du domaine (Dirichlet V = 0) | 2 | 0 |
+| Même niveau | 1 | 1 |
+| Plus grossier (1 voisin) | 2/3 | 2/3 |
+| Plus fin (2 voisins) | 4/3 | 2/3 chacun |
 
-Ces poids sont **localement conservatifs** et préservent l'identité
-discrète `Σ F_face = h² ρ` à chaque cellule (vérifié par
-[`tests/test_conservation.cpp`](../tests/test_conservation.cpp)).
+Ces poids sont localement conservatifs : l'identité discrète
+`Σ F_face = h² ρ` est vérifiée à chaque cellule par
+[`tests/test_conservation.cpp`](../tests/test_conservation.cpp).
 
 ## Morton encoding (clés quadtree)
 
@@ -204,33 +203,32 @@ sequenceDiagram
     U->>A: arr.V contient la solution
 ```
 
-## Propriétés mathématiques vérifiées aux tests
+## Propriétés vérifiées aux tests
 
-- **Opérateur self-adjoint** (Green's reciprocity) :
+- Opérateur self-adjoint (réciprocité de Green) :
   `G(r_A, r_B) = G(r_B, r_A)` à 10⁻¹³.
-- **Exactitude polynomiale** : le stencil 5-points est exact sur
+- Exactitude polynomiale : le stencil 5-points est exact sur
   `V = x(1-x)·y(1-y)`, vérifié à 10⁻¹³.
-- **Loi de Gauss** : `ε₀ ∮ ∂V/∂n dℓ = Q_enclosed` à 10⁻¹² en
-  discret.
-- **Identité énergétique** : `½ ∫ ρV dA = ½ ε₀ ∫ |∇V|² dA` à 10⁻¹²
+- Loi de Gauss : `ε₀ ∮ ∂V/∂n dℓ = Q_enclosed` à 10⁻¹² en discret.
+- Identité énergétique : `½ ∫ ρV dA = ½ ε₀ ∫ |∇V|² dA` à 10⁻¹²
   (summation-by-parts sur le stencil).
-- **Continuité de D** à travers des couches diélectriques : 10⁻¹².
-- **Convergence CG** : O(√κ) ≈ O(N) itérations, vérifié par scaling
+- Continuité de D à travers des couches diélectriques : 10⁻¹².
+- Convergence CG : O(√κ) ≈ O(N) itérations, vérifié pour
   N ∈ {64, 128, 256}.
-- **Conservation de flux par cellule** (AMR) : à chaque cellule de
-  l'arbre, `Σ F_face = h²ρ` après convergence SOR.
+- Conservation de flux par cellule (AMR) : `Σ F_face = h²ρ` à chaque
+  cellule après convergence SOR.
 
 ## Thread safety
 
-- Solveurs **réentrants sur instances séparées**.
-- **Pas** thread-safe sur la même instance car les scratch buffers
-  FFTW (`in_`, `out_`) dans `DSTSolver*` sont `mutable`. Spawn une
-  instance par thread pour du parallélisme concurrent.
-- SOR / CG / gs_smooth : pas d'état partagé au-delà de `V` et `rho`,
-  donc plusieurs threads peuvent les appeler sur des données
+- Réentrant sur instances séparées.
+- Pas thread-safe sur la même instance : les scratch buffers FFTW
+  (`in_`, `out_`) dans `DSTSolver*` sont `mutable`. Une instance par
+  thread pour du parallélisme concurrent.
+- SOR / CG / gs_smooth n'ont pas d'état partagé au-delà de `V` et
+  `rho` ; plusieurs threads peuvent les appeler sur des données
   disjointes.
 
-## Contract d'installation
+## Installation
 
 `install(EXPORT poissonTargets ...)` publie `poisson::poisson`. Un
 consommateur en aval n'a besoin que de :
@@ -243,12 +241,12 @@ target_link_libraries(my_app PRIVATE poisson::poisson)
 Eigen3 est propagé comme dépendance publique. FFTW3 est une dépendance
 publique quand la librairie est compilée avec `POISSON_HAVE_FFTW3`.
 
-## Limitations connues
+## Limitations
 
-- Seuls des domaines **carrés** à la racine du quadtree (Lx = Ly).
-- L'encodage Morton limite à 28 niveaux (≡ grille uniforme 256M × 256M).
+- Domaines carrés seulement à la racine du quadtree (Lx = Ly).
+- Morton limité à 28 niveaux (≡ grille uniforme 256M × 256M).
 - Pas de BC Neumann pour les solveurs spectraux (DST-I ⇒ Dirichlet
   homogène). Utiliser `fv::Solver2D` pour Dirichlet/Neumann mixte.
-- Le V-cycle composite utilise la re-discrétisation, **pas un opérateur
-  Galerkin**. Facteur de réduction par cycle observé ~0.7 sur AMR vs
-  ~0.1 pour un multigrille Galerkin.
+- V-cycle composite par re-discrétisation, pas d'opérateur Galerkin :
+  facteur de réduction par cycle observé ~0.7 sur AMR vs ~0.1 pour
+  un multigrille Galerkin.
