@@ -26,55 +26,35 @@ Reproduction : <a href="python/make_banner.py"><code>python/make_banner.py</code
 
 ---
 
-## Pourquoi ?
-
-Ce dépôt est un **portage C++** des notebooks pédagogiques
-`CourseOnPoisson/notebooks/TP{1..5}_*.ipynb` (Thomas, SOR, spectral DST,
-AMR quadtree, multigrille composite). Il fournit une **bibliothèque
-réutilisable** pour un simulateur de plasma plus vaste, avec Eigen,
-FFTW, OpenMP et Krylov/CG.
-
-> [!NOTE]
-> Les notebooks Python restent l'**oracle** : la librairie est validée par
-> 57 tests, dont 4 contre des snapshots JSON produits par les notebooks, et
-> 9 cross-checks de cohérence physique (loi de Gauss, énergie, continuité D).
-
-## Aperçu des solveurs
+## Solveurs
 
 | Module | Algorithme | Coût | BC supportées |
 |---|---|---|---|
-| [`linalg::thomas`](include/poisson/linalg/thomas.hpp) | Tridiagonal direct | **O(N)** | toutes |
+| [`linalg::thomas`](include/poisson/linalg/thomas.hpp) | Tridiagonal direct | O(N) | toutes |
 | [`fv::Solver1D`](include/poisson/fv/solver1d.hpp) | FV + Thomas | O(N) | Dirichlet (ε uniforme ou variable) |
 | [`fv::Solver2D`](include/poisson/fv/solver2d.hpp) | FV + SOR red-black ω_opt | O(N³) | Dirichlet×Neumann |
-| [`iter::solve_poisson_cg`](include/poisson/iter/poisson_cg.hpp) | CG / PCG Jacobi (Krylov) | **O(N³), 5× SOR** | Dirichlet×Neumann |
-| [`spectral::DSTSolver2D`](include/poisson/spectral/dst2d.hpp) | DST-I via FFTW | **O(N²·logN)** | Dirichlet homogène |
+| [`iter::solve_poisson_cg`](include/poisson/iter/poisson_cg.hpp) | CG / PCG Jacobi | O(N³), ~5× SOR | Dirichlet×Neumann |
+| [`spectral::DSTSolver2D`](include/poisson/spectral/dst2d.hpp) | DST-I via FFTW | O(N²·logN) | Dirichlet homogène |
 | [`amr::Quadtree` + `sor`](include/poisson/amr/solver.hpp) | Quadtree Morton + FV hétérogène | O(nb_leaves × iter) | Dirichlet V = 0 au bord |
-| [`mg::vcycle_amr_composite`](include/poisson/mg/vcycle.hpp) | V-cycle 2-grid composite AMR | O(nb_leaves) per cycle | Dirichlet V = 0 |
+| [`mg::vcycle_amr_composite`](include/poisson/mg/vcycle.hpp) | V-cycle 2-grid composite AMR | O(nb_leaves) par cycle | Dirichlet V = 0 |
 
-**Tous sont matrix-free** (stencils explicites, zéro matrice sparse stockée).
-Voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) pour le schéma complet
-et les conventions de grille.
+Tous matrix-free (stencils explicites, pas de matrice sparse stockée).
+Conventions de grille et schémas dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Vérification
+## Tests
 
-Trois couches indépendantes de tests, **66/66 passent** :
+66 tests Catch2, `ctest --test-dir build`. Couvrent :
 
-| Catégorie | # tests | Tolérance | Exemples |
-|---|---|---|---|
-| Unit / regression | 27 | variable | SOR converge, thomas exact, quadtree 2:1 |
-| Référence Python (snapshots JSON) | 4 | 1e-10 abs | `solve_poisson_1d` ≡ notebook |
-| Invariants mathématiques | 11 | **1e-13** | réciprocité Green G(A,B)=G(B,A), linéarité, symétrie |
-| Lois de conservation physique | 5 | **1e-12** | Gauss ε₀∮∂V/∂n=Q, énergie ½∫ρV=½ε₀∫\|∇V\|² |
-| Benchmark Fourier (Jackson ch.2) | 2 | O(h²) | convergence ratio +2.00 exact |
-| CG invariants + cross-check DST | 6 | 1e-10 | linéarité, symétrie, scaling O(N) |
-| Prolongation MG | 2 | 1e-13 | bilinéaire exacte sur affines |
-| AMR V-cycle | 2 | monotone | décroissance résidu par cycle |
-| Benchmarks de performance | 4 | tol SOR | Solver2D, gs_smooth, amr_sor |
-| Dielectric 1D | 3 | 1e-12 | continuité D à travers interfaces |
+- Invariants mathématiques (réciprocité de Green, linéarité, symétrie
+  de réflexion) à 1e-13.
+- Lois de conservation (Gauss, énergie, continuité D aux interfaces
+  diélectriques) à 1e-12.
+- 4 snapshots JSON vs les notebooks Python à 1e-10.
+- Convergence O(h²) sur un benchmark Fourier (Jackson ch.2).
+- Scaling CG en O(N), cross-check vs DST.
 
-Voir [`docs/RESULTS.md`](docs/RESULTS.md) pour les figures TP-style
-(TP1–TP5), [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) pour les
-benchmarks A/B et le profiling.
+Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures TP1–TP5),
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (benchmarks A/B + profiling).
 
 ---
 
@@ -138,7 +118,7 @@ cmake --build build --target poisson_py -j
 export PYTHONPATH=$PWD/build/python
 ```
 
-### Tutoriel — 3 solveurs en 20 lignes
+### Exemple
 
 ```python
 import numpy as np
@@ -194,9 +174,9 @@ interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
 |  |  |
 |---|---|
 | ![TP1](docs/figures/tp1_poisson_1d.png) | ![TP4](docs/figures/tp4_spectral_convergence.png) |
-| **TP1** — Poisson 1D, erreur L∞ = 2.1×10⁻¹⁴ (précision machine) | **TP4** — Convergence spectrale, pente log-log = **+2.000** exact |
+| TP1 : Poisson 1D, erreur L∞ = 2.1×10⁻¹⁴ (précision machine) | TP4 : convergence spectrale, pente log-log = +2.000 |
 | ![CG vs SOR](docs/figures/cg_convergence.png) | ![TP5](docs/figures/tp5_amr.png) |
-| **CG** : 187 iter / 8 ms vs SOR 1443 / 53 ms  (**7.7× moins d'itérations**) | **TP5** — AMR sur Gaussienne centrée : 400 feuilles, **×10 vs uniform** |
+| CG : 187 iter / 8 ms vs SOR 1443 / 53 ms | TP5 : AMR sur Gaussienne centrée, 400 feuilles, ×10 vs uniform |
 
 </div>
 
@@ -204,25 +184,23 @@ interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ## Performance
 
-Optimisations validées par A/B testing local avec `sample` / `xctrace`.
+Benchmarks et optimisations détaillés dans [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
+Résumé des gains principaux, validés par A/B avec `sample` / `xctrace` :
 
-| Optimisation | Kernel | Gain | Référence |
-|---|---|---|---|
-| In-place red-black SOR + `Vc_inv_` précomputé | `Solver2D::solve` N=128 | **−46 %** | [PERFORMANCE.md §3](docs/PERFORMANCE.md#3-fvsolver2dsolve--in-place-red-black--member-vc_inv_) |
-| True in-place RB + suppression scratch buffer | `mg::gs_smooth` N=128 | **−68 %** (×3.1) | [§2](docs/PERFORMANCE.md#2-mggs_smooth--true-in-place-red-black--vc_inv) |
-| Précalcul `rhs = h²ρ/ε₀`, `Vc_inv` | `amr::sor` | **−16 %** | [§1](docs/PERFORMANCE.md#1-amr-sor--precompute-rhs--hρε-and-vc_inv--1vc) |
-| Fold Dirichlet BC → RHS (débloque SIMD) | `Solver2D::solve` | **−5 %** | [§4](docs/PERFORMANCE.md#4-solver2dsolve--fold-dirichlet-bc-into-effective-rhs-to-unblock-auto-vectorization) |
-| `unroll_count(4)` + `std::max` réduction | `Solver2D::solve` | **−1.5 % à −3.6 %** | [§5](docs/PERFORMANCE.md#5-solver2dsolve--pragma-unroll-4--stdmax-reduction) |
-| Profile-guided `diag_mat` précomputé | CG `apply_neg_laplacian` N=512 | **−18 %** | [CG section](docs/PERFORMANCE.md#cg-hot-loop-optimisation-profile-guided-diag-precomputation) |
-| OpenMP parallel sweeps (opt-in) | Solver2D + gs_smooth N=512 | **×1.5 – ×1.9** | [OpenMP section](docs/PERFORMANCE.md#openmp-parallel-sweeps) |
+- `mg::gs_smooth` N=128 : in-place red-black, −68 %.
+- `Solver2D::solve` N=128 : in-place red-black + `Vc_inv_` précomputé, −46 %.
+- `amr::sor` : précalcul `rhs = h²ρ/ε₀` et `Vc_inv`, −16 %.
+- `Solver2D::solve` : fold Dirichlet → rhs pour débloquer SIMD, −5 %.
+- CG `apply_neg_laplacian` N=512 : `diag_mat` précomputé hors hot loop, −18 %.
+- OpenMP (opt-in, N ≥ 384) : Solver2D + gs_smooth, ×1.5 à ×1.9.
 
 ## License
 
 BSD-3-Clause. Voir [LICENSE](LICENSE).
 
-## Crédits
+## Références
 
-Port C++ des TPs Python du cours Poisson (`CourseOnPoisson/notebooks/`,
-basés sur Berger & Colella, Almgren et al.). Benchmark de référence :
-Jackson, *Classical Electrodynamics*, ch. 2. Conventions AMR FV :
-TP5 du même cours.
+- Cours Poisson : `CourseOnPoisson/notebooks/TP{1..5}_*.ipynb`.
+- Benchmark Fourier : Jackson, *Classical Electrodynamics*, ch. 2.
+- AMR FV : Berger & Colella, *Local adaptive mesh refinement for
+  shock hydrodynamics*, JCP 82 (1989).
