@@ -126,7 +126,13 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
       {
         // Serial path. Duplicated by design so the compiler sees a single
         // "pure" loop with no OpenMP instrumentation at this call site.
+        // `unroll_count(4)` reduces loop overhead (CS:APP loop-opt §2) and
+        // `std::max` for the reduction emits a branchless `fmax` which
+        // plays better with SIMD than the `if (diff > color_max)` pattern.
         for (int j = 0; j < Ny; ++j) {
+#         if defined(__clang__)
+#         pragma clang loop unroll_count(4)
+#         endif
           for (int i = (j + color) & 1; i < Nx; i += 2) {
             double s = 0.0;
             if (i > 0)      s += Vw_(i, j) * V(i - 1, j);
@@ -138,7 +144,7 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
             const double V_i  = V(i, j);
             const double V_new = one_minus_w * V_i + w * V_gs;
             const double diff = std::abs(V_new - V_i);
-            if (diff > color_max) color_max = diff;
+            color_max = std::max(color_max, diff);
             V(i, j) = V_new;
           }
         }

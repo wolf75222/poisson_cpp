@@ -77,8 +77,26 @@ full coverage).
 
 The gain is modest because vectorization is only partial — reaching
 `gs_smooth`'s ~307-instruction SIMD density would require also peeling
-the j-boundary cases. That refactor was deferred: the 5 % win already
-banked does not justify triplicating the inner loop body.
+the j-boundary cases. That refactor was attempted (triplicate the j
+loop, inline `update_cell`): SIMD count stayed at 40, perf stayed
+within 1 % of the current code. Reverted to keep the code simple.
+
+### 5. `Solver2D::solve` — `#pragma unroll 4` + `std::max` reduction
+
+Applied after re-reading CS:APP loop-optimizations.md §2 (k×1 unrolling
+reduces loop overhead) and §5 (branchless `fmax` plays better with
+SIMD than `if (diff > color_max)`). Net:
+
+| Metric | Before | After | Δ |
+|---|---|---|---|
+| sor2d 128² | 33.8 ms | 33.3 ms | **−1.5 %** |
+| sor2d 256² | 310 ms | 302 ms | **−2.7 %** |
+| sor2d 512² | 2586 ms | 2494 ms | **−3.6 %** |
+
+SIMD instruction count stays at 40 (the unroll reduces branches without
+exposing new vectorization opportunities). Software-prefetch variant
+was tried and reverted: added run-to-run variance at N ≤ 256 with no
+stable benefit at larger N.
 
 ## OpenMP parallel sweeps
 
