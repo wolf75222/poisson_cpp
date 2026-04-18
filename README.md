@@ -39,7 +39,9 @@ Reproduction : <a href="python/make_banner.py"><code>python/make_banner.py</code
 | [`mg::vcycle_amr_composite`](include/poisson/mg/vcycle.hpp) | V-cycle 2-grid composite AMR | O(nb_leaves) par cycle | Dirichlet V = 0 |
 
 Tous matrix-free (stencils explicites, pas de matrice sparse stockée).
-Conventions de grille et schémas dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+- Pseudocode et choix physiques : [`docs/ALGORITHMS.md`](docs/ALGORITHMS.md).
+- Schémas modules / conventions de grille : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Quick start
 
