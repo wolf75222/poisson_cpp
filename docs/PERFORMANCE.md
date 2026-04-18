@@ -49,6 +49,37 @@ branch-predictor friendly.
 
 Iteration counts are unchanged — these are pure per-iteration wins.
 
+### 4. `Solver2D::solve` — fold Dirichlet BC into effective rhs to unblock auto-vectorization
+
+Discovered via `otool -tV` on the .o file: `mg::gs_smooth` emitted
+307 NEON instructions (75 × `fadd.2d`), while `Solver2D::solve`
+emitted **zero**. Root cause: the ternary expressions
+`(i > 0) ? Vw_(i,j) * V(i-1,j) : Vw_(0,j) * uL_` have distinct
+operands on the two branches, which the loop vectorizer rejects.
+`gs_smooth` uses `if (...) s += ...` (predicated add with same-shape
+operands), which vectorizes cleanly.
+
+The transform precomputes the Dirichlet contribution into an effective
+right-hand side before the iteration loop:
+```
+rhs_bc = rho + Vw(0,:) * uL * e_0 + Ve(Nx-1,:) * uR * e_{Nx-1}
+```
+and replaces the ternaries with plain `if (i > 0) s += Vw_(i,j) * V(i-1,j)`.
+SIMD instruction count in `solve()` goes from **2 to 40** (partial
+vectorization: the remaining branches on j-boundaries still block
+full coverage).
+
+| Metric | Before | After | Δ |
+|---|---|---|---|
+| sor2d 128² (965 iter) | 35.5 ms | 33.8 ms | **−5 %** |
+| sor2d 256² (1837 iter) | 321 ms | 310 ms | **−3 %** |
+| sor2d 512² (3483 iter) | 2720 ms | 2586 ms | **−5 %** |
+
+The gain is modest because vectorization is only partial — reaching
+`gs_smooth`'s ~307-instruction SIMD density would require also peeling
+the j-boundary cases. That refactor was deferred: the 5 % win already
+banked does not justify triplicating the inner loop body.
+
 ## OpenMP parallel sweeps
 
 Enabled with `-DPOISSON_USE_OPENMP=ON` (default OFF). Parallelizes the
