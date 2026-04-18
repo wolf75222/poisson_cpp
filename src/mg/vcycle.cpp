@@ -45,22 +45,38 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
   const Eigen::MatrixXd Vc_inv = diag_fv(N).cwiseInverse();
   const double h2 = h * h;
 
-  // True in-place red-black Gauss-Seidel: sweep one color, using the most
-  // recently updated values of the other color (no scratch buffer, half the
-  // work compared to computing the full V_gs and discarding one color).
-  // Boundary cells have 3 or 2 neighbours — handled with explicit bounds
-  // checks; the branch predictor handles them well because the pattern is
-  // the same for every inner iteration.
+  // True in-place red-black Gauss-Seidel with an OpenMP fast path for
+  // N >= 384. The two paths are duplicated (not behind a lambda) so the
+  // compiler sees each as an independent, fully-inlinable loop and leaves
+  // the serial path free of OpenMP instrumentation.
+  constexpr int kOmpThreshold = 384;
   for (int it = 0; it < n_iter; ++it) {
     for (int color = 0; color < 2; ++color) {
-      for (int j = 0; j < N; ++j) {
-        for (int i = (j + color) & 1; i < N; i += 2) {
-          double s = 0.0;
-          if (i > 0)     s += V(i - 1, j);
-          if (i < N - 1) s += V(i + 1, j);
-          if (j > 0)     s += V(i, j - 1);
-          if (j < N - 1) s += V(i, j + 1);
-          V(i, j) = (s + h2 * rho(i, j)) * Vc_inv(i, j);
+#if defined(POISSON_HAVE_OPENMP)
+      if (N >= kOmpThreshold) {
+#       pragma omp parallel for schedule(static)
+        for (int j = 0; j < N; ++j) {
+          for (int i = (j + color) & 1; i < N; i += 2) {
+            double s = 0.0;
+            if (i > 0)     s += V(i - 1, j);
+            if (i < N - 1) s += V(i + 1, j);
+            if (j > 0)     s += V(i, j - 1);
+            if (j < N - 1) s += V(i, j + 1);
+            V(i, j) = (s + h2 * rho(i, j)) * Vc_inv(i, j);
+          }
+        }
+      } else
+#endif
+      {
+        for (int j = 0; j < N; ++j) {
+          for (int i = (j + color) & 1; i < N; i += 2) {
+            double s = 0.0;
+            if (i > 0)     s += V(i - 1, j);
+            if (i < N - 1) s += V(i + 1, j);
+            if (j > 0)     s += V(i, j - 1);
+            if (j < N - 1) s += V(i, j + 1);
+            V(i, j) = (s + h2 * rho(i, j)) * Vc_inv(i, j);
+          }
         }
       }
     }

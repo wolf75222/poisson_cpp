@@ -81,37 +81,62 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
   const double one_minus_w = 1.0 - w;
   double max_diff = 0.0;
   int iter = 0;
+
+  // Separate serial and parallel sweep paths with a C++ `if`. A single
+  // `#pragma omp parallel for if(N < T)` pays a small dispatch overhead
+  // even when the runtime clause disables parallelism, so we duplicate the
+  // inner loop and guard the whole parallel variant behind `#ifdef`.
+  constexpr int kOmpThreshold = 384;   // empirical break-even on Apple M-series
   for (iter = 0; iter < p.max_iter; ++iter) {
-    max_diff = 0.0;
-
-    // True in-place red-black Gauss-Seidel with SOR. Neighbour sums are
-    // computed cell-by-cell (no N x N scratch buffer, no 2x work for the
-    // unused color). Boundary terms are folded into the `Vw_(0, j) * uL_`
-    // and `Ve_(Nx-1, j) * uR_` branches; `Vs_` / `Vn_` are zero on the
-    // Neumann edges so a single access is safe everywhere.
+    double md = 0.0;
     for (int color = 0; color < 2; ++color) {
-      for (int j = 0; j < Ny; ++j) {
-        for (int i = (j + color) & 1; i < Nx; i += 2) {
-          double s = 0.0;
-          s += (i > 0)      ? Vw_(i, j) * V(i - 1, j)  : Vw_(0, j) * uL_;
-          s += (i < Nx - 1) ? Ve_(i, j) * V(i + 1, j)  : Ve_(Nx - 1, j) * uR_;
-          if (j > 0)      s += Vs_(i, j) * V(i, j - 1);
-          if (j < Ny - 1) s += Vn_(i, j) * V(i, j + 1);
+      double color_max = 0.0;
+#if defined(POISSON_HAVE_OPENMP)
+      if (Ny >= kOmpThreshold) {
+#       pragma omp parallel for reduction(max:color_max) schedule(static)
+        for (int j = 0; j < Ny; ++j) {
+          for (int i = (j + color) & 1; i < Nx; i += 2) {
+            double s = 0.0;
+            s += (i > 0)      ? Vw_(i, j) * V(i - 1, j)  : Vw_(0, j) * uL_;
+            s += (i < Nx - 1) ? Ve_(i, j) * V(i + 1, j)  : Ve_(Nx - 1, j) * uR_;
+            if (j > 0)      s += Vs_(i, j) * V(i, j - 1);
+            if (j < Ny - 1) s += Vn_(i, j) * V(i, j + 1);
 
-          const double V_gs = (s + rho(i, j)) * Vc_inv_(i, j);
-          const double V_i  = V(i, j);
-          const double V_new = one_minus_w * V_i + w * V_gs;
-          const double diff = std::abs(V_new - V_i);
-          if (diff > max_diff) max_diff = diff;
-          V(i, j) = V_new;
+            const double V_gs = (s + rho(i, j)) * Vc_inv_(i, j);
+            const double V_i  = V(i, j);
+            const double V_new = one_minus_w * V_i + w * V_gs;
+            const double diff = std::abs(V_new - V_i);
+            if (diff > color_max) color_max = diff;
+            V(i, j) = V_new;
+          }
+        }
+      } else
+#endif
+      {
+        // Serial path. Duplicated by design so the compiler sees a single
+        // "pure" loop with no OpenMP instrumentation at this call site.
+        for (int j = 0; j < Ny; ++j) {
+          for (int i = (j + color) & 1; i < Nx; i += 2) {
+            double s = 0.0;
+            s += (i > 0)      ? Vw_(i, j) * V(i - 1, j)  : Vw_(0, j) * uL_;
+            s += (i < Nx - 1) ? Ve_(i, j) * V(i + 1, j)  : Ve_(Nx - 1, j) * uR_;
+            if (j > 0)      s += Vs_(i, j) * V(i, j - 1);
+            if (j < Ny - 1) s += Vn_(i, j) * V(i, j + 1);
+
+            const double V_gs = (s + rho(i, j)) * Vc_inv_(i, j);
+            const double V_i  = V(i, j);
+            const double V_new = one_minus_w * V_i + w * V_gs;
+            const double diff = std::abs(V_new - V_i);
+            if (diff > color_max) color_max = diff;
+            V(i, j) = V_new;
+          }
         }
       }
+      if (color_max > md) md = color_max;
     }
 
-    if (max_diff < p.tol) {
-      ++iter;
-      break;
-    }
+    max_diff = md;
+    if (md < p.tol) { ++iter; break; }
   }
 
   return {iter, max_diff};
