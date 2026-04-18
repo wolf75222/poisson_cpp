@@ -17,7 +17,8 @@ set(TEST_SOURCES
   test_amr_solver.cpp
   test_vcycle.cpp
   test_prolongate.cpp
-  test_reference.cpp)
+  test_reference.cpp
+  test_invariants.cpp)
 
 if(POISSON_HAVE_FFTW3)
   list(APPEND TEST_SOURCES test_dst1d.cpp test_dst2d.cpp test_benchmark.cpp)
