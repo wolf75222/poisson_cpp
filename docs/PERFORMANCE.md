@@ -105,14 +105,45 @@ energy identity, polynomial exactness), pass under both
 
 ## Non-applied optimisations
 
-The following were evaluated but rejected (either net-negative or
-marginal on this workload):
+The following were evaluated via the CS:APP measure → transform →
+re-measure workflow and rejected (either net-negative or within
+measurement noise on this hardware).
 
-- **Morton-ordered SOR for `Solver2D`**: column-major iteration already
-  exploits Eigen's column-major layout optimally. No cache win.
+- **Morton-ordered sorting of AMR leaves** (`amr::extract_arrays`).
+  Hypothesis: sorting the flat `AMRArrays` by `CellKey` value (level
+  then interleaved i,j) would place spatial neighbours close in memory
+  and improve cache behaviour. **Result**: 0.55 ms → 1.00 ms (regression
+  ×1.8). On Apple M-series, the entire 640-leaf `AMRArrays` (~100 KB)
+  already fits in the 128 KB L1D regardless of ordering. Sorting by
+  key groups cells *first by level*, which places level-6 neighbours
+  of level-5 cells far apart (guaranteed cache line jump at every
+  coarse-fine interface). The hash-map order gave better average
+  locality by accident. A true space-filling-curve traversal across
+  levels (normalise all cells to the finest resolution before
+  Morton-interleaving) might help at larger leaf counts, but was not
+  pursued since the current bench shows no cache pressure.
+
+- **Reassociation of the 4-neighbour sum in `Solver2D::solve`**.
+  Hypothesis: replacing the 4-deep serial `s += ...` chain with a
+  balanced tree `(sw + se) + (ss + sn)` would reduce the dependency
+  chain from depth-4 to depth-2 and expose more ILP (CS:APP §5.6).
+  **Result**: N=128 35.5 ms → 36.1 ms (noise-level); N=256 321 ms →
+  324 ms (noise-level). On Apple M-series FP-add latency is 2–3 cycles
+  and the compiler at `-O3` already schedules independent multiplies
+  in parallel. The hot loop is memory-latency-bound, not dependency-
+  chain-bound, so the reassociation has no measurable effect.
+
+- **Loop peeling of the i-boundary branches** in `Solver2D`.
+  Hypothesis: splitting the inner i loop into `[i=0] [interior] [i=Nx-1]`
+  would eliminate the two ternaries per cell. **Rejected without
+  implementation**: on modern CPUs the border branches are taken
+  consistently (always false for interior i), so branch prediction
+  handles them at zero cost. Code duplication would be unjustified.
+
 - **Higher-order (bi-cubic) prolongation in V-cycle**: multigrid rate
   is dominated by the smoother, not by the prolongation. No measurable
   improvement on Gaussian sources.
+
 - **Galerkin coarse operator for composite MG**: non-trivial to
   implement correctly across coarse-fine interfaces; the
   rediscretisation-based coarse operator converges fast enough (~0.7
