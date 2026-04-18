@@ -47,7 +47,7 @@ branch-predictor friendly.
 | sor2d 128² (965 iter) | 67.8 ms | 36.7 ms | **−46 % (1.85×)** |
 | sor2d 256² (1837 iter) | 511.8 ms | 321.3 ms | **−37 % (1.6×)** |
 
-Iteration counts are unchanged — these are pure per-iteration wins.
+Iteration counts are unchanged; these are pure per-iteration wins.
 
 ### 4. `Solver2D::solve` — fold Dirichlet BC into effective rhs to unblock auto-vectorization
 
@@ -75,7 +75,7 @@ full coverage).
 | sor2d 256² (1837 iter) | 321 ms | 310 ms | **−3 %** |
 | sor2d 512² (3483 iter) | 2720 ms | 2586 ms | **−5 %** |
 
-The gain is modest because vectorization is only partial — reaching
+The gain is modest because vectorization is only partial. Reaching
 `gs_smooth`'s ~307-instruction SIMD density would require also peeling
 the j-boundary cases. That refactor was attempted (triplicate the j
 loop, inline `update_cell`): SIMD count stayed at 40, perf stayed
@@ -134,7 +134,7 @@ benefit from.
 
 ### Correctness under parallelism
 
-Red-black Gauss-Seidel is **data-parallel within a color** — no two
+Red-black Gauss-Seidel is **data-parallel within a color**: no two
 cells of the same color share a neighbour being updated concurrently.
 The reduction on `max|V_new - V_old|` is exact (OpenMP `reduction(max:)`).
 All 57 tests, including the invariant suite (Green's reciprocity,
@@ -176,8 +176,8 @@ Measured on Apple M-series, tol = 1e-8, linear ramp problem:
 | 256² | 304 ms / 1837 iter | 63 ms / 368 iter  | **4.8×** |
 | 512² | 2515 ms / 3483 iter | 639 ms / 734 iter | **3.9×** |
 
-Iteration counts scale as ~N for CG (183, 368, 734 — factor 2 per
-doubling of N) vs ~N² for SOR (965, 1837, 3483 — factor 2 also but
+Iteration counts scale as ~N for CG (183, 368, 734 ; factor 2 per
+doubling of N) vs ~N² for SOR (965, 1837, 3483 ; factor 2 also but
 from a much higher baseline because each SOR iteration only
 propagates information one cell).
 
@@ -205,14 +205,14 @@ Eigen dense assignment (AXPY) 2290 samples  (~23 %)
 ```
 
 **Hypothesis**: the stencil diagonal (5/h² at Dirichlet rows, 4/h²
-interior) is a pure function of `(i, j)` — recomputing it every call
-is wasted work AND the `diag += ...` branches in the inner loop
+interior) is a pure function of `(i, j)`. Recomputing it every call
+is wasted work, and the `diag += ...` branches in the inner loop
 prevent auto-vectorisation (similar to the ternary issue in
 `fv::Solver2D` documented above).
 
 **Fix**: precompute `diag_mat` once in `solve_poisson_cg`, pass by ref
 to `apply_neg_laplacian_with_diag`. Inner loop now only has `s +=
-V(...) * dx2_inv` predicated adds — same pattern as `gs_smooth`
+V(...) * dx2_inv` predicated adds, the same pattern as `gs_smooth`
 which clang vectorises cleanly (307 NEON instructions).
 
 **Measured A/B** (median of 3 runs, tol = 1e-8):
@@ -223,7 +223,7 @@ which clang vectorises cleanly (307 NEON instructions).
 | 256² | 63.2        | 60.0       | **−5 %** |
 | 512² | 638.7       | 521        | **−18 %** |
 
-Iteration counts unchanged (183, 368, 734 — this is a pure
+Iteration counts unchanged (183, 368, 734 ; this is a pure
 per-iteration win). 66/66 tests still pass. Re-profile confirms
 `apply_neg_laplacian_with_diag` dropped from 2698 to 2057 samples
 (−24 %) and the AXPY kernel from 2290 to 1712 (−25 %, helped

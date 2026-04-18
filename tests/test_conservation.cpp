@@ -1,7 +1,7 @@
 // Physical conservation laws for electrostatics, as described in the course
 // notes `CourseOnPoisson/Notes/poisson_equation.pdf` (Sections 2.3, 2.4,
 // 3.2, 4.2, 4.3). These are identities that any physically-consistent
-// Poisson solver must satisfy — they test the solver against the
+// Poisson solver must satisfy; they test the solver against the
 // *mathematical structure* of the physics, not against external data.
 //
 //   1. Gauss's law (integral form):        ε₀ ∮ ∂V/∂n dℓ = Q_enclosed
@@ -149,7 +149,7 @@ TEST_CASE("[conservation] Green's first identity: ε₀ ∫|∇V|² = ∫ρV",
   //   ∫ V Δ V dA = - ∫ |∇V|² dA   (integration by parts, boundary term vanishes)
   // Multiplying by -ε₀ and using -ε₀ Δ V = ρ:
   //   ε₀ ∫ |∇V|² dA = ∫ ρ V dA
-  // Same *identity* as energy equivalence but without the ½ — we verify both
+  // Same *identity* as energy equivalence but without the ½; we verify both
   // sides independently here to double-check the solver's self-adjointness.
   const int N = 127;
   const double L = 1.0, eps0 = 2.3;

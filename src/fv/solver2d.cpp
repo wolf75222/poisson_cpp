@@ -82,9 +82,9 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
   // side:  rhs_bc = rho + Vw(0,:) * uL * e_0 + Ve(Nx-1,:) * uR * e_{Nx-1}.
   // This lets the hot loop use unconditional predicated adds (like
   // `if (i > 0) s += Vw_(i,j) * V(i-1,j)`) instead of ternaries with
-  // distinct operands. The auto-vectorizer accepts the first form — as
-  // verified in mg::gs_smooth, which emits 307 NEON instructions —
-  // and bails on the latter.
+  // distinct operands. The auto-vectorizer accepts the first form (as
+  // verified in mg::gs_smooth, which emits 307 NEON instructions) and
+  // bails on the latter.
   Eigen::MatrixXd rhs_bc = rho;
   rhs_bc.row(0).array()      += Vw_.row(0).array()      * uL_;
   rhs_bc.row(Nx - 1).array() += Ve_.row(Nx - 1).array() * uR_;

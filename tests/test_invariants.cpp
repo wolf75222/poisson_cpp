@@ -11,7 +11,7 @@
 //   (d) Green's-function reciprocity: V at point B from a source at A
 //       equals V at point A from a source at B (exchange of roles).
 //
-// These identities are true BY CONSTRUCTION — once written they do not need
+// These identities are true BY CONSTRUCTION; once written they do not need
 // to be recomputed against any external oracle. They are our "bank of
 // verified facts" about the solvers.
 
@@ -156,7 +156,7 @@ TEST_CASE("[invariant] DSTSolver2D: Green's-function reciprocity G(A,B) = G(B,A)
   // Approximate point sources with narrow Gaussians. For a linear, self-adjoint
   // operator (Laplacian + Dirichlet BCs), the Green's function is symmetric:
   // the potential at B due to a unit source at A equals the potential at A
-  // due to a unit source at B. This is a cornerstone theorem of electrostatics.
+  // due to a unit source at B. Standard theorem of electrostatics.
   const int N = 127;
   const double L = 1.0;
   const double h = L / (N + 1);

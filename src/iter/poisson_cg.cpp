@@ -16,7 +16,7 @@ namespace {
 // mul-sub for the stencil, one store. This matches the gs_smooth
 // structure that clang's auto-vectorizer handles well (307 NEON
 // instructions observed). No `MatrixXd::Zero` allocation in the hot
-// path — `Y` is default-constructed and every entry is overwritten.
+// path; `Y` is default-constructed and every entry is overwritten.
 Eigen::MatrixXd apply_neg_laplacian_with_diag(
     Eigen::Ref<const Eigen::MatrixXd> V,
     double dx2_inv, double dy2_inv,
@@ -37,7 +37,7 @@ Eigen::MatrixXd apply_neg_laplacian_with_diag(
   return Y;
 }
 
-// Diagonal of (-Δ) for the stencil above — used by the Jacobi
+// Diagonal of (-Δ) for the stencil above; used by the Jacobi
 // preconditioner M⁻¹ r = r / diag(A).
 Eigen::MatrixXd diag_neg_laplacian(int Nx, int Ny,
                                    double dx2_inv, double dy2_inv) {

@@ -11,7 +11,7 @@
 /// Conjugate Gradient.
 ///
 /// The discrete operator A is the same 5-point Laplacian used by
-/// `fv::Solver2D` — symmetric positive-definite by construction — so CG
+/// `fv::Solver2D` (symmetric positive-definite by construction), so CG
 /// converges robustly. For uniform permittivity eps, a single CG call
 /// reaches tol=1e-10 in O(sqrt(N)) iterations vs O(N) for SOR, i.e. a
 /// ~5x iteration reduction at N=128 and ~15x at N=1024.
@@ -21,7 +21,7 @@ namespace poisson::iter {
 /// Apply the FV Laplacian of `fv::Solver2D`: same stencil coefficients
 /// `(Ve, Vw, Vn, Vs)`, same Dirichlet-in-x Neumann-in-y boundary
 /// treatment. Dirichlet ghost contributions live in the effective RHS
-/// computed by `poisson_rhs` below — `laplacian` itself acts as if the
+/// computed by `poisson_rhs` below; `laplacian` itself acts as if the
 /// boundary values were zero (pure linear operator).
 [[nodiscard]] Eigen::MatrixXd laplacian_fv2d(
     Eigen::Ref<const Eigen::MatrixXd> V,

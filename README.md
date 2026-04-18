@@ -2,7 +2,7 @@
 
 # Poisson CPP
 
-**Modern C++20 library of Poisson solvers : finite volume, spectral, AMR + multigrid, Conjugate Gradient.**
+**C++20 library of Poisson solvers : finite volume, spectral, AMR + multigrid, Conjugate Gradient.**
 
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=cplusplus)
 ![Tests](https://img.shields.io/badge/tests-66%2F66-brightgreen)
@@ -28,11 +28,11 @@ Reproduction : <a href="python/make_banner.py"><code>python/make_banner.py</code
 
 ## Pourquoi ?
 
-Ce dépôt est le **portage C++ moderne** des notebooks pédagogiques
+Ce dépôt est un **portage C++** des notebooks pédagogiques
 `CourseOnPoisson/notebooks/TP{1..5}_*.ipynb` (Thomas, SOR, spectral DST,
-AMR quadtree, multigrille composite). Il sert de **bibliothèque réutilisable**
-pour un simulateur de plasma plus vaste et comme terrain d'expérimentation
-HPC (Eigen, FFTW, OpenMP, CG-Krylov).
+AMR quadtree, multigrille composite). Il fournit une **bibliothèque
+réutilisable** pour un simulateur de plasma plus vaste, avec Eigen,
+FFTW, OpenMP et Krylov/CG.
 
 > [!NOTE]
 > Les notebooks Python restent l'**oracle** : la librairie est validée par
@@ -187,7 +187,7 @@ interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ---
 
-## Résultats marquants
+## Résultats
 
 <div align="center">
 
@@ -202,9 +202,9 @@ interprétées dans [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ---
 
-## Performance : optimisations documentées
+## Performance
 
-Toutes validées par **A/B testing local** avec `sample` / `xctrace`.
+Optimisations validées par A/B testing local avec `sample` / `xctrace`.
 
 | Optimisation | Kernel | Gain | Référence |
 |---|---|---|---|

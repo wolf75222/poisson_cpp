@@ -1,5 +1,5 @@
 // Profile harness: run CG in a hot loop long enough to be sampled by
-// macOS `sample` or xctrace. Outputs nothing — purely for profiling.
+// macOS `sample` or xctrace. Outputs nothing; purely for profiling.
 
 #include <Eigen/Core>
 #include "poisson/core/grid.hpp"

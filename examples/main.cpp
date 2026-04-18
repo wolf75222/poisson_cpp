@@ -95,7 +95,7 @@ int run_sor2d(int N, double uL, double uR, double omega, double tol,
   Eigen::MatrixXd rho = Eigen::MatrixXd::Zero(N, N);
 
   // Batch the iteration loop to record a (sampled) residual history for
-  // a convergence plot — the per-batch cost is one extra rhs_bc copy,
+  // a convergence plot; the per-batch cost is one extra rhs_bc copy,
   // negligible against the SOR work for moderate batch sizes.
   std::vector<double> history;
   std::vector<int> hist_iter;
@@ -168,15 +168,15 @@ int run_spectral2d(int N, const std::string& output) {
 }
 
 // Multi-charge scatter: a deterministic set of N_charges Gaussian sources
-// scattered across the grounded unit box. Used as the hero banner — AMR
+// scattered across the grounded unit box. Used as the hero banner: AMR
 // refinement appears around every charge individually, producing the
 // canonical "multi-scale" look advertised on the README.
 int run_amr_scatter(int level_min, int level_max, double sigma,
                     const std::string& output) {
   // Fixed charge positions so the banner is reproducible. Includes a
   // tight cluster (top-left), a larger cluster (right), and isolated
-  // singles — mimicking a plasma filament scene.
-  // Alternating-sign charges so their V tails cancel at distance — each
+  // singles, mimicking a plasma filament scene.
+  // Alternating-sign charges so their V tails cancel at distance; each
   // charge keeps a localised signed halo instead of fusing into one big
   // dome. Visualisation uses |V| so both +q and -q show up as dark
   // "caves" against the bright V≈0 background.
@@ -353,7 +353,7 @@ int run_amr(int level_min, int level_max, double sigma,
 
   if (!output.empty()) {
     // Dump leaf-level cell info for off-line plotting: center (x, y), size h,
-    // level, V, rho — each leaf as one entry so Python can draw rectangles.
+    // level, V, rho ; each leaf as one entry so Python can draw rectangles.
     nlohmann::json cells = nlohmann::json::array();
     for (Eigen::Index n = 0; n < arr.V.size(); ++n) {
       const poisson::amr::CellKey key = arr.keys[static_cast<std::size_t>(n)];

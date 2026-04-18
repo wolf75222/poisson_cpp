@@ -50,8 +50,8 @@ ordre de discrétisation pour les comparaisons avec une solution continue).
 **Problème** : `V''(x) = 0` sur `(0, L)` avec `V(0) = uL`, `V(L) = uR`.
 Solution analytique : rampe linéaire `V(x) = uL + (uR − uL) · x / L`.
 
-**Solveur** : `poisson::fv::solve_poisson_1d` — volumes finis à 3 points +
-Thomas tridiagonal (algorithme O(N) direct).
+**Solveur** : `poisson::fv::solve_poisson_1d`. Volumes finis à 3 points +
+Thomas tridiagonal (O(N) direct).
 
 **Observations** :
 - `‖V_num − V_analytique‖∞ = 2.13×10⁻¹⁴`, soit **3.85×10⁻¹⁵ en relatif** à N=100.
@@ -78,14 +78,14 @@ accumule les erreurs d'arrondi :
 2. **Back substitution** (i = N−1 → 0) : repart de la condition uR = 0
    où V est petit, donc l'erreur est "re-pincée" à ~0 côté droit.
 
-Le TP1 Python donne le même type de pattern (il ne l'affiche simplement pas
-— il se contente d'un `np.max(err)`). Toute bibliothèque tridiagonale directe
-en double (numpy.linalg.solve, scipy.linalg.solve_banded, LAPACK DGTSV)
-produit la même signature.
+Le TP1 Python donne le même type de pattern (il ne l'affiche simplement
+pas, se contentant d'un `np.max(err)`). Toute bibliothèque tridiagonale
+directe en double (numpy.linalg.solve, scipy.linalg.solve_banded, LAPACK
+DGTSV) produit la même signature.
 
 **Conclusion** : le code est correct. La "bizarrerie" visuelle est juste un
-artefact d'affichage log-scale d'une erreur à la précision machine —
-masquer les zéros exacts et tracer la ligne `ε_mach · ‖V‖∞` clarifie
+artefact d'affichage log-scale d'une erreur à la précision machine.
+Masquer les zéros exacts et tracer la ligne `ε_mach · ‖V‖∞` clarifie
 l'interprétation.
 
 ### Vérification externe contre `scipy.linalg.solve_banded`
@@ -98,9 +98,9 @@ l'interprétation.
 ```
 
 Cette différence entre deux implémentations indépendantes de la même
-méthode est du **même ordre** que l'écart à l'analytique (`2×10⁻¹⁴`),
-confirmant que tout le budget d'erreur est absorbé par les arrondis
-d'ordre des opérations — il n'y a pas de biais numérique imputable à
+méthode est du même ordre que l'écart à l'analytique (`2×10⁻¹⁴`),
+ce qui montre que tout le budget d'erreur est absorbé par les arrondis
+d'ordre des opérations. Il n'y a pas de biais numérique imputable à
 notre Thomas.
 
 ---
@@ -125,7 +125,7 @@ issu du schéma VF avec moyenne harmonique de `ε` aux faces.
   aux interfaces `x = 0.3` et `x = 0.7`. Le saut de E à chaque interface
   vérifie `E_1 · ε_1 = E_2 · ε_2` (continuité du flux).
 - **Panneau de droite** : `D(x) = ε · E(x)` est constant à
-  **(max−min)/|moyenne| = 2.2×10⁻¹³** près — la précision machine.
+  **(max−min)/|moyenne| = 2.2×10⁻¹³** près, soit la précision machine.
   La ligne pointillée est la valeur théorique
   `D_theo = ε₀ · (uL − uR) / (dx · Σ 1/ε_face)` (circuit équivalent de
   3 condensateurs en série).
@@ -144,17 +144,17 @@ notes de cours §4.2 (*équation de Poisson avec diélectrique*).
 `V(1,y) = uR`), Neumann en y (`∂V/∂y = 0`). Pas de source. Attendu :
 rampe linéaire indépendante de y.
 
-**Solveur** : `poisson::fv::Solver2D` — volumes finis cell-centered,
+**Solveur** : `poisson::fv::Solver2D`, volumes finis cell-centered,
 SOR red-black avec `ω_opt = 2 / (1 + sin(π/N))` auto-sélectionné.
 
 **Observations** (N = 64) :
 - **Panneau de gauche** : heatmap 2D. V ne dépend que de x (comme attendu
   sous Neumann en y). Vérification numérique : `std(V, axis=1).max() =
-  2.6×10⁻¹¹`, soit 40× le résidu d'arrêt — l'indépendance en y est
+  2.6×10⁻¹¹`, soit 40× le résidu d'arrêt ; l'indépendance en y est
   parfaitement capturée.
 - **Panneau central** : coupe `y = 0.5`. Le SOR coïncide avec la rampe
   analytique à **3.3×10⁻⁹** près. Note : les points SOR sont aux
-  **centres de cellule** `x_i = (i+0.5)·dx`, pas aux faces — c'est
+  **centres de cellule** `x_i = (i+0.5)·dx`, pas aux faces. C'est
   pourquoi le premier point apparaît à `V ≈ 0.08` et le dernier à
   `V ≈ 9.92` (cellules décalées d'un demi-pas par rapport au bord où
   `V = uL`, `V = uR`).
@@ -175,7 +175,7 @@ SOR red-black avec `ω_opt = 2 / (1 + sin(π/N))` auto-sélectionné.
 **Problème manufacturé** : `V(x,y) = sin(πx/L)·sin(πy/L)` avec
 `−∇²V = 2(π/L)² V` sur la boîte unité avec Dirichlet homogène.
 
-**Solveur** : `poisson::spectral::DSTSolver2D` — DST-I via FFTW,
+**Solveur** : `poisson::spectral::DSTSolver2D`. DST-I via FFTW,
 diagonalisation exacte du Laplacien discret.
 
 **Observations** :
@@ -184,8 +184,8 @@ diagonalisation exacte du Laplacien discret.
   C'est purement de l'**erreur de discrétisation** (différence entre
   valeurs propres continues `(kπ/L)²` et discrètes `4 sin²(kπh/2)/h²`),
   pas de la méthode.
-- **Courbe rouge (carrés)** : erreur vs le **mode propre discret** —
-  on construit `ρ = λ_{1,1}^{disc} · V` avec les valeurs propres
+- **Courbe rouge (carrés)** : erreur vs le **mode propre discret**.
+  On construit `ρ = λ_{1,1}^{disc} · V` avec les valeurs propres
   discrètes et on vérifie qu'on récupère exactement `V`. Résultat
   **constant à ~5×10⁻¹⁶** sur toutes les résolutions = **précision
   machine**, indépendamment de h. Le DST-I inverse le Laplacien
@@ -193,7 +193,7 @@ diagonalisation exacte du Laplacien discret.
 - Vérifié également par [`tests/test_invariants.cpp`](../tests/test_invariants.cpp)
   ("DSTSolver2D recovers a 2D discrete eigenmode to machine precision").
 
-**Coût** : `O(N² log N)` par solve — dominé par les deux DSTs. À N = 512
+**Coût** : `O(N² log N)` par solve, dominé par les deux DSTs. À N = 512
 un solve prend ~8 ms (vs ~2.5 s pour SOR à même précision), soit **×300**
 en vitesse. Compromis : la DST exige Dirichlet homogène sur les 4 faces.
 
@@ -207,7 +207,7 @@ en vitesse. Compromis : la DST exige Dirichlet homogène sur les 4 faces.
 (σ = 0.04) dans une boîte `[0, 1]²` à la terre. Raffinement adaptatif
 autour de la zone `r² < (4σ)²`, 3 ≤ level ≤ 6.
 
-**Solveur** : `poisson::amr::extract_arrays + sor` — discrétisation FV
+**Solveur** : `poisson::amr::extract_arrays + sor`. Discrétisation FV
 hétérogène avec poids stencil `{2, 1, 2/3, 4/3}` aux interfaces
 coarse-fine (localement conservative).
 
@@ -240,7 +240,7 @@ coarse-fine (localement conservative).
    Le solveur AMR (avec stencil hétérogène aux interfaces coarse-fine,
    stopping tol = 10⁻⁷) reproduit le DST2D uniform-fin à **0.5%** près,
    avec ~10× moins de cellules. L'écart vient principalement de
-   l'ordre-1 du stencil aux interfaces 2:1 — d'où la motivation de
+   l'ordre-1 du stencil aux interfaces 2:1, d'où la motivation de
    la prolongation bilinéaire dans le V-cycle composite.
 
 3. **Contrainte 2:1** entre cellules voisines : enforcée par
@@ -264,7 +264,7 @@ coarse-fine (localement conservative).
 et Neumann en y, ρ = 0 (rampe linéaire). Trois solveurs itératifs
 comparés à la même tolérance (10⁻¹⁰).
 
-**Solveur** : `poisson::iter::solve_poisson_cg` — matrix-free, templated,
+**Solveur** : `poisson::iter::solve_poisson_cg`. Matrix-free, templated,
 fold des BCs Dirichlet dans le RHS puis CG pur sur l'opérateur SPD.
 
 **Observations (N = 128, figure convergence)** :

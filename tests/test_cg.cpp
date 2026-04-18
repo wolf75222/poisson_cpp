@@ -81,7 +81,7 @@ TEST_CASE("CG and PCG both converge to tolerance", "[cg][2d]") {
 
   // Note: on this particular problem (near-uniform diagonal, dominant
   // low-frequency mode) Jacobi preconditioning actually slows CG down
-  // slightly — the diagonal scaling "distracts" from the eigenmode
+  // slightly: the diagonal scaling "distracts" from the eigenmode
   // alignment achieved naturally by CG. PCG helps when the operator has
   // strongly varying coefficients (e.g. spatially-varying permittivity).
 }
@@ -90,7 +90,7 @@ TEST_CASE("CG beats SOR in iteration count at moderate N", "[cg][2d][perf]") {
   // For this SPD system, CG converges in O(sqrt(kappa)) iterations vs
   // O(kappa) for SOR with optimal omega. At N = 128 with Dirichlet in x
   // / Neumann in y, kappa ~ N² so CG needs ~N iterations and SOR ~N.
-  // In practice observed: CG ~190, SOR ~1450 at N=128 — ~7x speedup in
+  // In practice observed: CG ~190, SOR ~1450 at N=128, ~7x speedup in
   // iteration count. We require at least 3x (generous margin).
   const int N = 128;
   Grid2D grid(1.0, 1.0, N, N);
@@ -186,7 +186,7 @@ TEST_CASE("CG residual decreases monotonically (A-norm guarantee)",
           "[cg][history]") {
   // CG minimises the A-norm of the error each step, but the ||r||_2
   // residual we plot is not guaranteed to decrease monotonically
-  // — it may oscillate early on. However, the trend over any window of
+  // (it may oscillate early on). However, the trend over any window of
   // a few iterations should be downward, and the final value must be
   // below the initial one.
   const int N = 64;
@@ -224,7 +224,7 @@ TEST_CASE("CG matches DSTSolver2D on homogeneous Dirichlet problem",
   // Build rho on the DSTSolver2D node-centered grid AND on the FV cell
   // centers, sampled from the same analytical Gaussian. The two
   // discretisations are *not* identical, so we expect O(h) agreement,
-  // not machine precision — the goal is to show "same physics, both
+  // not machine precision; the goal is to show "same physics, both
   // solvers agree to discretisation accuracy".
   Eigen::MatrixXd rho_dst(N, N), rho_fv(N, N);
   for (int j = 1; j <= N; ++j) {
@@ -252,7 +252,7 @@ TEST_CASE("CG matches DSTSolver2D on homogeneous Dirichlet problem",
 
   // Peaks from the two solvers should agree to ~20 %: both solve Poisson
   // on the same geometry, but DST has full-Dirichlet BCs while CG
-  // (fv::Solver2D convention) has Dirichlet-in-x + Neumann-in-y — so the
+  // (fv::Solver2D convention) has Dirichlet-in-x + Neumann-in-y, so the
   // BCs in y differ, which scales the peak by O(1) but still of the
   // same order of magnitude. This is a sanity cross-check, not a
   // precision test.

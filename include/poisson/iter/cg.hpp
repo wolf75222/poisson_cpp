@@ -49,7 +49,7 @@ struct CGReport {
 /// \param b           right-hand side
 /// \param p           tolerance and iteration cap
 /// \param history     optional: if non-null, appends `||r||_2 / ||b||_2`
-///                    after every iteration — useful for convergence plots.
+///                    after every iteration (for convergence plots).
 template <MatrixOp Apply>
 [[nodiscard]] CGReport cg(Apply&& apply,
                           Eigen::Ref<Eigen::MatrixXd> x,
