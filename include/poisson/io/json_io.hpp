@@ -9,14 +9,14 @@
 namespace poisson::io {
 
 /// Convert an Eigen vector to a nlohmann::json array.
-inline nlohmann::json to_json(Eigen::Ref<const Eigen::VectorXd> v) {
+inline nlohmann::json vec_to_json(Eigen::Ref<const Eigen::VectorXd> v) {
   nlohmann::json j = nlohmann::json::array();
   for (Eigen::Index i = 0; i < v.size(); ++i) j.push_back(v(i));
   return j;
 }
 
 /// Convert an Eigen matrix to a nlohmann::json array-of-arrays (row-major).
-inline nlohmann::json to_json(Eigen::Ref<const Eigen::MatrixXd> M) {
+inline nlohmann::json mat_to_json(Eigen::Ref<const Eigen::MatrixXd> M) {
   nlohmann::json j = nlohmann::json::array();
   for (Eigen::Index i = 0; i < M.rows(); ++i) {
     nlohmann::json row = nlohmann::json::array();

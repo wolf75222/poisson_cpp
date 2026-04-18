@@ -1,0 +1,279 @@
+#!/usr/bin/env python3
+# Plot the poisson_cpp solvers' output in the style of the
+# CourseOnPoisson/notebooks TPs (TP1..TP5).
+#
+# Uses the pybind11 module `poisson_cpp` directly when available, otherwise
+# falls back to loading JSON snapshots written by `examples/poisson_demo`.
+#
+# Usage:
+#   python3 python/plot_tp_style.py tp1   # 1D Poisson + analytical overlay
+#   python3 python/plot_tp_style.py tp3   # 2D SOR heatmap + slice + conv
+#   python3 python/plot_tp_style.py tp4   # spectral convergence O(h^2)
+#   python3 python/plot_tp_style.py tp5   # AMR quadtree mesh + V
+#   python3 python/plot_tp_style.py all
+#
+# Set PYTHONPATH=build/python before running, or install the module first.
+
+from __future__ import annotations
+
+import os
+import sys
+import math
+import json
+from pathlib import Path
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
+
+
+# Try pybind first; fall back to JSON if the module isn't built.
+try:
+    # Allow running from the project root without installing the module.
+    _build_dir = Path(__file__).resolve().parent.parent / "build" / "python"
+    if _build_dir.exists():
+        sys.path.insert(0, str(_build_dir))
+    import poisson_cpp as pc   # noqa: F401
+    HAVE_PC = True
+except Exception as exc:
+    print(f"[info] pybind11 module unavailable ({exc}); will use JSON snapshots")
+    HAVE_PC = False
+
+
+FIG_DIR = Path(__file__).resolve().parent.parent / "docs" / "figures"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# TP1 — 1D Poisson with Dirichlet BCs.
+#
+# Reference problem: zero source, uL ≠ uR. Analytical V(x) is a linear ramp.
+# Validates the FV stencil + Thomas solver at machine precision.
+# ---------------------------------------------------------------------------
+
+def tp1() -> None:
+    N, L, uL, uR = 100, 1.0, 10.0, 0.0
+
+    if HAVE_PC:
+        grid = pc.Grid1D(L, N)
+        rho = np.zeros(N)
+        V = pc.solve_poisson_1d(rho, uL, uR, grid)
+        x = np.array([grid.x(i) for i in range(N)])
+    else:
+        raise RuntimeError("Build the pybind module: -DPOISSON_BUILD_PYTHON=ON")
+
+    # Analytical: V(x) = uL + (uR - uL) * x / L
+    V_theo = uL + (uR - uL) * x / L
+    err = float(np.max(np.abs(V - V_theo)))
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    axes[0].plot(x, V, "o", ms=3, label="numérique (FV + Thomas)")
+    axes[0].plot(x, V_theo, "k--", lw=1, label="analytique")
+    axes[0].set(xlabel="x", ylabel="V(x)",
+                title=f"TP1 — Poisson 1D (ρ=0, N={N})")
+    axes[0].legend()
+    axes[0].grid(alpha=0.3)
+
+    axes[1].semilogy(x, np.abs(V - V_theo) + 1e-20, "o", ms=3, color="C3")
+    axes[1].set(xlabel="x", ylabel=r"$|V_\mathrm{num} - V_\mathrm{anal}|$",
+                title=f"Erreur ponctuelle (L∞ = {err:.2e})")
+    axes[1].grid(alpha=0.3, which="both")
+
+    out = FIG_DIR / "tp1_poisson_1d.png"
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+    print(f"[tp1] Erreur L∞ = {err:.3e}   →  {out}")
+
+
+# ---------------------------------------------------------------------------
+# TP3 — 2D SOR red-black.
+#
+# Reference problem: uL ≠ uR, zero source, Neumann in y → V must be
+# a linear ramp in x, independent of y. Plot heatmap + mid-line slice +
+# residual convergence curve (semilog).
+# ---------------------------------------------------------------------------
+
+def tp3() -> None:
+    N, uL, uR = 64, 0.0, 10.0
+
+    if HAVE_PC:
+        g = pc.Grid2D(1.0, 1.0, N, N)
+        s = pc.Solver2D(g, 1.0, uL, uR)
+        rho = np.zeros((N, N))
+        # Record residual history by stepping in batches.
+        V = np.zeros((N, N), order="F")
+        history, iters = [], []
+        total = 0
+        step = 20
+        for _ in range(500):
+            rep = s.solve_inplace(V, rho, omega=-1.0, tol=1e-10,
+                                   max_iter=step)
+            total += rep.iterations
+            history.append(rep.residual)
+            iters.append(total)
+            if rep.residual < 1e-10:
+                break
+            if rep.iterations < step:
+                break
+
+    xc = (np.arange(N) + 0.5) / N
+    yc = (np.arange(N) + 0.5) / N
+    X, Y = np.meshgrid(xc, yc, indexing="ij")
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    im = axes[0].pcolormesh(X, Y, V, shading="auto", cmap="viridis")
+    axes[0].set(title="V(x, y) — FV SOR red-black", xlabel="x", ylabel="y",
+                aspect="equal")
+    fig.colorbar(im, ax=axes[0])
+
+    V_analytic = uL + (uR - uL) * xc
+    axes[1].plot(xc, V[:, N // 2], "o", ms=3, label="SOR")
+    axes[1].plot(xc, V_analytic, "k--", lw=1, label="analytique")
+    axes[1].set(title=f"Coupe y = 0.5 (N = {N})", xlabel="x", ylabel="V")
+    axes[1].legend(); axes[1].grid(alpha=0.3)
+
+    axes[2].semilogy(iters, history, "o-", ms=3)
+    axes[2].set(title="Convergence SOR", xlabel="itération",
+                ylabel=r"$\max |V^{k+1} - V^k|$")
+    axes[2].grid(alpha=0.3, which="both")
+
+    out = FIG_DIR / "tp3_sor2d.png"
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+    err = float(np.max(np.abs(V - V_analytic[:, None])))
+    print(f"[tp3] {total} iter, résidu final {history[-1]:.2e}, "
+          f"erreur vs linéaire {err:.2e}  →  {out}")
+
+
+# ---------------------------------------------------------------------------
+# TP4 — Spectral DST convergence study.
+#
+# Manufactured solution: V = sin(πx/Lx)·sin(πy/Ly) => ρ = 2(π/L)² V.
+# Plot error vs h in log-log, expecting slope -2 (O(h²)).
+# ---------------------------------------------------------------------------
+
+def tp4() -> None:
+    if not (HAVE_PC and pc.has_fftw3):
+        print("[tp4] requires pybind module built with FFTW3"); return
+
+    L = 1.0
+    Ns = [15, 31, 63, 127, 255, 511]
+    errs, hs = [], []
+    a = math.pi / L
+    for N in Ns:
+        h = L / (N + 1)
+        rho = np.zeros((N, N))
+        V_theo = np.zeros((N, N))
+        for i in range(1, N + 1):
+            for j in range(1, N + 1):
+                x, y = i * h, j * h
+                v = math.sin(a * x) * math.sin(a * y)
+                V_theo[i - 1, j - 1] = v
+                rho[i - 1, j - 1] = 2 * a * a * v    # -Laplacian = 2 a² V
+        dst = pc.DSTSolver2D(N, N, L, L, 1.0)
+        V = dst.solve(rho)
+        err = float(np.max(np.abs(V - V_theo)))
+        errs.append(err); hs.append(h)
+
+    hs = np.array(hs); errs = np.array(errs)
+    # fit slope in log-log
+    slope, intercept = np.polyfit(np.log(hs), np.log(errs), 1)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.loglog(hs, errs, "o-", ms=6, label=f"DST 2D (pente ≈ {slope:.2f})")
+    ax.loglog(hs, np.exp(intercept) * hs**2, "k--", lw=1,
+              label="référence $h^2$")
+    ax.set(xlabel="h", ylabel=r"$\|V_\mathrm{num} - V_\mathrm{anal}\|_\infty$",
+           title="TP4 — Convergence spectrale sur $V = \\sin(\\pi x)\\sin(\\pi y)$")
+    ax.grid(alpha=0.3, which="both")
+    ax.legend()
+    out = FIG_DIR / "tp4_spectral_convergence.png"
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+    print(f"[tp4] pente empirique = {slope:.3f} (attendu +2.0)  →  {out}")
+
+
+# ---------------------------------------------------------------------------
+# TP5 — AMR quadtree + heterogeneous FV.
+#
+# Loads a JSON snapshot written by `poisson_demo --problem amr --output ...`.
+# Draws the leaf mesh (Rectangle patches, no fill) and V color-coded.
+# ---------------------------------------------------------------------------
+
+def tp5() -> None:
+    # Ensure we have a snapshot; generate one if missing.
+    snap = Path(__file__).resolve().parent.parent / "data" / "snapshots" / "amr.json"
+    if not snap.exists():
+        print(f"[tp5] snapshot missing at {snap}")
+        print("[tp5] run: ./build/examples/poisson_demo --problem amr "
+              f"--Nmin 3 --Nmax 6 --sigma 0.04 --output {snap}")
+        return
+
+    with open(snap) as f:
+        data = json.load(f)
+    cells = data["cells"]
+
+    xs = np.array([c["x"] for c in cells])
+    ys = np.array([c["y"] for c in cells])
+    hs = np.array([c["h"] for c in cells])
+    Vs = np.array([c["V"] for c in cells])
+    levels = np.array([c["level"] for c in cells])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Left: mesh (rectangles, edges only).
+    rects = [Rectangle((x - h / 2, y - h / 2), h, h)
+             for x, y, h in zip(xs, ys, hs)]
+    ax = axes[0]
+    pc_ = PatchCollection(rects, facecolor="none", edgecolor="k", linewidth=0.4)
+    ax.add_collection(pc_)
+    ax.set(xlim=(0, 1), ylim=(0, 1), aspect="equal",
+           title=f"Maillage AMR — {len(cells)} feuilles",
+           xlabel="x", ylabel="y")
+
+    # Right: V colored.
+    ax = axes[1]
+    rects2 = [Rectangle((x - h / 2, y - h / 2), h, h)
+              for x, y, h in zip(xs, ys, hs)]
+    pc_v = PatchCollection(rects2, cmap="viridis")
+    pc_v.set_array(Vs)
+    ax.add_collection(pc_v)
+    ax.set(xlim=(0, 1), ylim=(0, 1), aspect="equal",
+           title="V(x, y) sur cellules AMR",
+           xlabel="x", ylabel="y")
+    fig.colorbar(pc_v, ax=ax)
+
+    out = FIG_DIR / "tp5_amr.png"
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+
+    # Level histogram + stats (TP-style interpretation).
+    n_by_level = {int(lv): int((levels == lv).sum()) for lv in np.unique(levels)}
+    uniform = 4 ** max(n_by_level)
+    gain = uniform / len(cells)
+    print(f"[tp5] leaves per level: {n_by_level}")
+    print(f"[tp5] gain vs uniform at level {max(n_by_level)}: "
+          f"×{gain:.1f}  →  {out}")
+
+
+# ---------------------------------------------------------------------------
+
+_DISPATCH = {"tp1": tp1, "tp3": tp3, "tp4": tp4, "tp5": tp5}
+
+
+def main() -> int:
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if cmd == "all":
+        for name, fn in _DISPATCH.items():
+            print(f"--- {name} ---")
+            try:
+                fn()
+            except Exception as e:
+                print(f"[{name}] FAILED: {e}")
+    elif cmd in _DISPATCH:
+        _DISPATCH[cmd]()
+    else:
+        print(f"Usage: {sys.argv[0]} [{'|'.join(list(_DISPATCH) + ['all'])}]")
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

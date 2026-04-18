@@ -17,9 +17,10 @@ with a library-oriented API.
   interfaces).
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the module layout
-and the stencil / BC conventions, and
+and the stencil / BC conventions,
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) for benchmark methodology
-and A/B results.
+and A/B results, and [`docs/RESULTS.md`](docs/RESULTS.md) for
+TP-style figures and interpretation of the solver outputs.
 
 | Module | Scope |
 |---|---|
@@ -53,6 +54,15 @@ Enable OpenMP for the 2D SOR and `gs_smooth` kernels
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DPOISSON_USE_OPENMP=ON
+```
+
+Build the pybind11 module for interactive Python use
+(requires Python 3.9+, pybind11 fetched via FetchContent if missing):
+
+```bash
+cmake -B build -DPOISSON_BUILD_PYTHON=ON
+cmake --build build --target poisson_py -j
+PYTHONPATH=build/python python -c "import poisson_cpp; print(poisson_cpp.__version__)"
 ```
 
 Observed single-node speedups on Apple M-series (8 threads):
