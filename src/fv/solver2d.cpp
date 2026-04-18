@@ -77,8 +77,8 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
     w = 2.0 / (1.0 + std::sin(std::numbers::pi / std::max(Nx, Ny)));
   }
 
-  // Pre-build red/black masks as arrays of indices for fast iteration.
-  // parity(i,j) = (i + j) & 1.  Red cells are those with parity == 0.
+  // Scratch buffer for the neighbour-sum across the whole grid, reused
+  // across iterations to avoid allocations in the hot loop.
   Eigen::MatrixXd neighbour_sum(Nx, Ny);
 
   double max_diff = 0.0;
@@ -87,7 +87,7 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
     max_diff = 0.0;
 
     for (int color = 0; color < 2; ++color) {
-      // Neighbour sum: sum of woff[dir] * V[neighbour] over 4 directions.
+      // Fully vectorised neighbour sum including ghost-cell Dirichlet terms.
       neighbour_sum.setZero();
       neighbour_sum.bottomRows(Nx - 1).array() +=
           Vw_.bottomRows(Nx - 1).array() * V.topRows(Nx - 1).array();
@@ -97,16 +97,19 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
           Vs_.rightCols(Ny - 1).array() * V.leftCols(Ny - 1).array();
       neighbour_sum.leftCols(Ny - 1).array() +=
           Vn_.leftCols(Ny - 1).array() * V.rightCols(Ny - 1).array();
-      // Dirichlet ghost contributions.
       neighbour_sum.row(0).array()      += Vw_.row(0).array()      * uL_;
       neighbour_sum.row(Nx - 1).array() += Ve_.row(Nx - 1).array() * uR_;
 
-      // Gauss-Seidel update for cells of this color.
+      // Update cells of the current color. Eigen stores matrices in
+      // column-major order, so we iterate with j outer and i inner for
+      // cache locality. The inner loop has no colour branch: we step i
+      // by 2 starting at the right offset for column j.
+      const double one_minus_w = 1.0 - w;
       for (int j = 0; j < Ny; ++j) {
-        for (int i = 0; i < Nx; ++i) {
-          if (((i + j) & 1) != color) continue;
+        const int istart = (j + color) & 1;
+        for (int i = istart; i < Nx; i += 2) {
           const double V_gs = (neighbour_sum(i, j) + rho(i, j)) / Vc_(i, j);
-          const double V_new = (1.0 - w) * V(i, j) + w * V_gs;
+          const double V_new = one_minus_w * V(i, j) + w * V_gs;
           const double diff = std::abs(V_new - V(i, j));
           if (diff > max_diff) max_diff = diff;
           V(i, j) = V_new;

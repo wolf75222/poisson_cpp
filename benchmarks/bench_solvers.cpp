@@ -74,13 +74,15 @@ int main(int argc, char** argv) {
     poisson::fv::Solver2D solver(grid, 1.0, 0.0, 1.0);
     Eigen::MatrixXd V = Eigen::MatrixXd::Zero(N, N);
     Eigen::MatrixXd rho = Eigen::MatrixXd::Zero(N, N);
+    poisson::fv::Solver2D::Report last{};
     const double ms = bench(
         [&] {
           V.setZero();
-          solver.solve(V, rho, {.tol = 1e-8, .max_iter = 50'000});
+          last = solver.solve(V, rho, {.tol = 1e-8, .max_iter = 50'000});
         },
         repeats);
-    std::cout << "sor2d       N=" << N << "x" << N << "  " << ms << " ms\n";
+    std::cout << "sor2d       N=" << N << "x" << N << "  " << ms << " ms"
+              << "  (" << last.iterations << " iter)\n";
   }
 
 #if defined(POISSON_HAVE_FFTW3)
