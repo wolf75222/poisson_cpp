@@ -58,7 +58,8 @@ set(POISSON_SOURCES
   src/fv/dielectric.cpp
   src/fv/solver2d.cpp
   src/amr/quadtree.cpp
-  src/amr/solver.cpp)
+  src/amr/solver.cpp
+  src/mg/vcycle.cpp)
 
 if(POISSON_HAVE_FFTW3)
   list(APPEND POISSON_SOURCES
