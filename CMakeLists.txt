@@ -43,6 +43,8 @@ endif()
 add_library(poisson
   src/linalg/thomas.cpp
   src/fv/solver1d.cpp
+  src/fv/dielectric.cpp
+  src/fv/solver2d.cpp
 )
 add_library(poisson::poisson ALIAS poisson)
 

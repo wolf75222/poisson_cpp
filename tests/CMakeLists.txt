@@ -10,6 +10,8 @@ include(Catch)
 add_executable(tests_poisson
   test_thomas.cpp
   test_solver1d.cpp
+  test_dielectric.cpp
+  test_solver2d.cpp
 )
 target_link_libraries(tests_poisson PRIVATE poisson::poisson Catch2::Catch2WithMain)
 target_compile_options(tests_poisson PRIVATE
