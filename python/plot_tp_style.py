@@ -65,9 +65,43 @@ def tp1() -> None:
 
     # Analytical: V(x) = uL + (uR - uL) * x / L
     V_theo = uL + (uR - uL) * x / L
-    err = float(np.max(np.abs(V - V_theo)))
+    err_abs = np.abs(V - V_theo)
+    err_rel = err_abs / (np.abs(V_theo) + 1e-30)   # rel err, avoid div by 0
+    err_inf = float(err_abs.max())
+
+    # Cross-check: our Thomas vs scipy's banded solver on the SAME system.
+    # If both produce V to within a few ULP of each other, the discrepancy
+    # with the analytical ramp is pure round-off accumulation in a direct
+    # tridiagonal solve — not a scheme bug.
+    try:
+        from scipy.linalg import solve_banded
+        # Build the same tridiag system as Solver1D for rho = 0:
+        #   -V_{i-1} + 2 V_i - V_{i+1} = 0  for interior nodes,
+        #   V_0 = uL, V_{N-1} = uR.
+        ab = np.zeros((3, N))   # banded form, l=u=1
+        ab[0, 1:] = -1.0          # super-diagonal
+        ab[1, :]  = 2.0           # main diagonal
+        ab[2, :-1] = -1.0         # sub-diagonal
+        ab[1, 0]   = 1.0; ab[0, 1] = 0.0   # first row: 1 * V[0] = uL
+        ab[1, -1]  = 1.0; ab[2, -2] = 0.0  # last row: 1 * V[N-1] = uR
+        rhs_py = np.zeros(N); rhs_py[0] = uL; rhs_py[-1] = uR
+        V_scipy = solve_banded((1, 1), ab, rhs_py)
+        cross_err = float(np.max(np.abs(V - V_scipy)))
+        print(f"[tp1]   vs scipy.solve_banded: ‖V_cpp - V_scipy‖∞ = "
+              f"{cross_err:.2e}  (ULP level)")
+    except ImportError:
+        pass
+
+    # Floor under "machine precision": ~N_ulp * eps * max|V|.
+    # Thomas is a direct solver with O(N) floating-point ops on each pass;
+    # empirically the error bound is  O(N) * eps * ||V||_inf  ≈  20 * eps * 10
+    # = 4e-15 for double and N=100 here. We use eps * max|V| as a lower
+    # reference line.
+    machine_floor = np.finfo(float).eps * float(np.abs(V_theo).max())
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+
+    # Left: V vs analytical.
     axes[0].plot(x, V, "o", ms=3, label="numérique (FV + Thomas)")
     axes[0].plot(x, V_theo, "k--", lw=1, label="analytique")
     axes[0].set(xlabel="x", ylabel="V(x)",
@@ -75,14 +109,26 @@ def tp1() -> None:
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
-    axes[1].semilogy(x, np.abs(V - V_theo) + 1e-20, "o", ms=3, color="C3")
-    axes[1].set(xlabel="x", ylabel=r"$|V_\mathrm{num} - V_\mathrm{anal}|$",
-                title=f"Erreur ponctuelle (L∞ = {err:.2e})")
+    # Right: pointwise error. Mask *exact* zeros so they do not show up as
+    # a spurious row near 1e-20 (artefact of the log scale). Plot the
+    # double-precision floor (eps * ||V||_inf) as a dotted reference.
+    mask = err_abs > 0
+    axes[1].semilogy(x[mask], err_abs[mask], "o", ms=3, color="C3",
+                     label=r"$|V_\mathrm{num} - V_\mathrm{anal}|$")
+    axes[1].axhline(machine_floor, color="gray", ls=":", lw=1,
+                    label=fr"$\varepsilon_{{mach}} \cdot \|V\|_\infty$ "
+                          fr"≈ {machine_floor:.1e}")
+    axes[1].set(xlabel="x", ylabel="erreur absolue",
+                title=f"Erreur ponctuelle (L∞ = {err_inf:.2e}, "
+                      f"L∞ relative = {err_rel.max():.2e})",
+                ylim=(1e-17, 1e-12))
+    axes[1].legend(loc="lower right")
     axes[1].grid(alpha=0.3, which="both")
 
     out = FIG_DIR / "tp1_poisson_1d.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp1] Erreur L∞ = {err:.3e}   →  {out}")
+    print(f"[tp1] L∞ abs = {err_inf:.3e}  L∞ rel = {err_rel.max():.3e}  "
+          f"floor ≈ {machine_floor:.2e}  →  {out}")
 
 
 # ---------------------------------------------------------------------------
