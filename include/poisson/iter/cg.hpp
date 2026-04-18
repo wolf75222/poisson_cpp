@@ -51,11 +51,11 @@ struct CGReport {
 /// \param history     optional: if non-null, appends `||r||_2 / ||b||_2`
 ///                    after every iteration — useful for convergence plots.
 template <MatrixOp Apply>
-CGReport cg(Apply&& apply,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<const Eigen::MatrixXd> b,
-            CGParams p = {},
-            std::vector<double>* history = nullptr) {
+[[nodiscard]] CGReport cg(Apply&& apply,
+                          Eigen::Ref<Eigen::MatrixXd> x,
+                          Eigen::Ref<const Eigen::MatrixXd> b,
+                          CGParams p = {},
+                          std::vector<double>* history = nullptr) {
   const double b_norm = b.norm();
   if (b_norm == 0.0) {
     x.setZero();
@@ -86,11 +86,11 @@ CGReport cg(Apply&& apply,
 /// choice for a symmetric FV operator is diagonal Jacobi:
 /// `precond(r) = r ./ diag(A)`.
 template <MatrixOp Apply, MatrixOp Precond>
-CGReport pcg(Apply&& apply, Precond&& precond,
-             Eigen::Ref<Eigen::MatrixXd> x,
-             Eigen::Ref<const Eigen::MatrixXd> b,
-             CGParams p = {},
-             std::vector<double>* history = nullptr) {
+[[nodiscard]] CGReport pcg(Apply&& apply, Precond&& precond,
+                           Eigen::Ref<Eigen::MatrixXd> x,
+                           Eigen::Ref<const Eigen::MatrixXd> b,
+                           CGParams p = {},
+                           std::vector<double>* history = nullptr) {
   const double b_norm = b.norm();
   if (b_norm == 0.0) {
     x.setZero();

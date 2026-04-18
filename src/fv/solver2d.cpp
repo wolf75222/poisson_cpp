@@ -97,7 +97,7 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
   // `#pragma omp parallel for if(N < T)` pays a small dispatch overhead
   // even when the runtime clause disables parallelism, so we duplicate the
   // inner loop and guard the whole parallel variant behind `#ifdef`.
-  constexpr int kOmpThreshold = 384;   // empirical break-even on Apple M-series
+  [[maybe_unused]] constexpr int kOmpThreshold = 384;   // empirical break-even
   for (iter = 0; iter < p.max_iter; ++iter) {
     double md = 0.0;
     for (int color = 0; color < 2; ++color) {

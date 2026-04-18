@@ -20,10 +20,11 @@ namespace poisson::fv {
 /// \param grid Node-centered grid (N nodes spanning [0, L]).
 /// \param eps0 Permittivity (default 1.0 for normalized units).
 /// \returns Potential V at the N grid nodes, with V(0) = uL and V(N-1) = uR.
-Eigen::VectorXd solve_poisson_1d(Eigen::Ref<const Eigen::VectorXd> rho,
-                                 double uL,
-                                 double uR,
-                                 const Grid1D& grid,
-                                 double eps0 = 1.0);
+[[nodiscard]] Eigen::VectorXd solve_poisson_1d(
+    Eigen::Ref<const Eigen::VectorXd> rho,
+    double uL,
+    double uR,
+    const Grid1D& grid,
+    double eps0 = 1.0);
 
 }  // namespace poisson::fv

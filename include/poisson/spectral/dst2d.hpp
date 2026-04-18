@@ -23,10 +23,11 @@ class DSTSolver2D {
   DSTSolver2D& operator=(DSTSolver2D&&) noexcept = default;
 
   /// Solve eps0 (V_xx + V_yy) = -rho on the (Nx, Ny) interior points.
-  Eigen::MatrixXd solve(Eigen::Ref<const Eigen::MatrixXd> rho) const;
+  [[nodiscard]] Eigen::MatrixXd solve(
+      Eigen::Ref<const Eigen::MatrixXd> rho) const;
 
-  int Nx() const noexcept { return Nx_; }
-  int Ny() const noexcept { return Ny_; }
+  [[nodiscard]] int Nx() const noexcept { return Nx_; }
+  [[nodiscard]] int Ny() const noexcept { return Ny_; }
 
  private:
   int Nx_, Ny_;

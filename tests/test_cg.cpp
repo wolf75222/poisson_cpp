@@ -147,10 +147,11 @@ TEST_CASE("[invariant] CG is linear in (rho, uL, uR)", "[cg][invariant]") {
   Eigen::MatrixXd V1 = Eigen::MatrixXd::Zero(N, N);
   Eigen::MatrixXd V2 = Eigen::MatrixXd::Zero(N, N);
   Eigen::MatrixXd Vc = Eigen::MatrixXd::Zero(N, N);
-  solve_poisson_cg(V1, rho1, grid, 1.0, uL1, uR1, p);
-  solve_poisson_cg(V2, rho2, grid, 1.0, uL2, uR2, p);
-  solve_poisson_cg(Vc, alpha * rho1 + beta * rho2, grid, 1.0,
-                   alpha * uL1 + beta * uL2, alpha * uR1 + beta * uR2, p);
+  (void) solve_poisson_cg(V1, rho1, grid, 1.0, uL1, uR1, p);
+  (void) solve_poisson_cg(V2, rho2, grid, 1.0, uL2, uR2, p);
+  (void) solve_poisson_cg(Vc, alpha * rho1 + beta * rho2, grid, 1.0,
+                          alpha * uL1 + beta * uL2,
+                          alpha * uR1 + beta * uR2, p);
   const double diff = (Vc - (alpha * V1 + beta * V2)).cwiseAbs().maxCoeff();
   REQUIRE(diff < 1e-6);
 }
@@ -246,8 +247,8 @@ TEST_CASE("CG matches DSTSolver2D on homogeneous Dirichlet problem",
 
   Grid2D grid(L, L, N, N);
   Eigen::MatrixXd V_cg = Eigen::MatrixXd::Zero(N, N);
-  solve_poisson_cg(V_cg, rho_fv, grid, 1.0, 0.0, 0.0,
-                   {.tol = 1e-11, .max_iter = 3000});
+  (void) solve_poisson_cg(V_cg, rho_fv, grid, 1.0, 0.0, 0.0,
+                          {.tol = 1e-11, .max_iter = 3000});
 
   // Peaks from the two solvers should agree to ~20 %: both solve Poisson
   // on the same geometry, but DST has full-Dirichlet BCs while CG

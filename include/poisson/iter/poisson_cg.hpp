@@ -23,27 +23,30 @@ namespace poisson::iter {
 /// treatment. Dirichlet ghost contributions live in the effective RHS
 /// computed by `poisson_rhs` below — `laplacian` itself acts as if the
 /// boundary values were zero (pure linear operator).
-Eigen::MatrixXd laplacian_fv2d(Eigen::Ref<const Eigen::MatrixXd> V,
-                               double dx2_inv, double dy2_inv);
+[[nodiscard]] Eigen::MatrixXd laplacian_fv2d(
+    Eigen::Ref<const Eigen::MatrixXd> V,
+    double dx2_inv, double dy2_inv);
 
 /// Precomputed effective RHS that folds the Dirichlet boundary values
 /// `uL`, `uR` into the source `rho` so `laplacian_fv2d` stays a pure
 /// zero-BC operator. Needed because CG requires A symmetric and
 /// BC-independent; we move the non-homogeneous part to the RHS.
-Eigen::MatrixXd poisson_rhs_fv2d(Eigen::Ref<const Eigen::MatrixXd> rho,
-                                 const Grid2D& grid,
-                                 double eps, double uL, double uR);
+[[nodiscard]] Eigen::MatrixXd poisson_rhs_fv2d(
+    Eigen::Ref<const Eigen::MatrixXd> rho,
+    const Grid2D& grid,
+    double eps, double uL, double uR);
 
 /// High-level solve: CG with optional Jacobi preconditioner.
 /// \param history  optional: if non-null, receives the relative residual
 ///                 ||r||_2 / ||b||_2 at every iteration (for plotting
 ///                 convergence curves in Python).
-CGReport solve_poisson_cg(Eigen::Ref<Eigen::MatrixXd> V,
-                          Eigen::Ref<const Eigen::MatrixXd> rho,
-                          const Grid2D& grid,
-                          double eps, double uL, double uR,
-                          CGParams p = {},
-                          bool use_preconditioner = true,
-                          std::vector<double>* history = nullptr);
+[[nodiscard]] CGReport solve_poisson_cg(
+    Eigen::Ref<Eigen::MatrixXd> V,
+    Eigen::Ref<const Eigen::MatrixXd> rho,
+    const Grid2D& grid,
+    double eps, double uL, double uR,
+    CGParams p = {},
+    bool use_preconditioner = true,
+    std::vector<double>* history = nullptr);
 
 }  // namespace poisson::iter

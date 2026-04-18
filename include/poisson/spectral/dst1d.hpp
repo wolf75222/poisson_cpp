@@ -26,10 +26,11 @@ class DSTSolver1D {
   /// Solve eps0 V'' = -rho on the N interior points.
   /// \param rho right-hand side, shape (N,).
   /// \returns potential V at the N interior points.
-  Eigen::VectorXd solve(Eigen::Ref<const Eigen::VectorXd> rho) const;
+  [[nodiscard]] Eigen::VectorXd solve(
+      Eigen::Ref<const Eigen::VectorXd> rho) const;
 
-  int N() const noexcept { return N_; }
-  double L() const noexcept { return L_; }
+  [[nodiscard]] int    N() const noexcept { return N_; }
+  [[nodiscard]] double L() const noexcept { return L_; }
 
  private:
   int N_;

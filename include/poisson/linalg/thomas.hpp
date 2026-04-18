@@ -20,9 +20,10 @@ namespace poisson::linalg {
 /// \param d right-hand side, shape (N,).
 /// \returns solution x, shape (N,).
 /// \throws std::invalid_argument if lengths mismatch or N < 2.
-Eigen::VectorXd thomas(Eigen::Ref<const Eigen::VectorXd> a,
-                       Eigen::Ref<const Eigen::VectorXd> b,
-                       Eigen::Ref<const Eigen::VectorXd> c,
-                       Eigen::Ref<const Eigen::VectorXd> d);
+[[nodiscard]] Eigen::VectorXd thomas(
+    Eigen::Ref<const Eigen::VectorXd> a,
+    Eigen::Ref<const Eigen::VectorXd> b,
+    Eigen::Ref<const Eigen::VectorXd> c,
+    Eigen::Ref<const Eigen::VectorXd> d);
 
 }  // namespace poisson::linalg

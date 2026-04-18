@@ -46,7 +46,7 @@ TEST_CASE("Solver2D: symmetric in y under y-independent source", "[fv][2d]") {
     const double x = (i + 0.5) * grid.dx();
     rho.row(i).setConstant(std::sin(3.14159265358979323846 * x));
   }
-  solver.solve(V, rho, {.tol = 1e-10});
+  (void) solver.solve(V, rho, {.tol = 1e-10});
 
   // Neumann in y: V should be independent of j in steady state.
   for (int i = 0; i < N; ++i) {

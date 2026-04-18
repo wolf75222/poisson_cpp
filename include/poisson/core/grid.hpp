@@ -21,10 +21,14 @@ struct Grid1D {
   }
 
   /// Spacing between two consecutive nodes.
-  constexpr double dx() const noexcept { return L / static_cast<double>(N - 1); }
+  [[nodiscard]] constexpr double dx() const noexcept {
+    return L / static_cast<double>(N - 1);
+  }
 
   /// Position of node `i` (0 <= i < N).
-  constexpr double x(int i) const noexcept { return static_cast<double>(i) * dx(); }
+  [[nodiscard]] constexpr double x(int i) const noexcept {
+    return static_cast<double>(i) * dx();
+  }
 };
 
 /// Uniform 2D mesh, cell-centered convention (used by `Solver2D` and `AMR`).
@@ -43,8 +47,12 @@ struct Grid2D {
     if (nx < 1 || ny < 1) throw std::invalid_argument("Grid2D requires Nx,Ny >= 1");
   }
 
-  constexpr double dx() const noexcept { return Lx / static_cast<double>(Nx); }
-  constexpr double dy() const noexcept { return Ly / static_cast<double>(Ny); }
+  [[nodiscard]] constexpr double dx() const noexcept {
+    return Lx / static_cast<double>(Nx);
+  }
+  [[nodiscard]] constexpr double dy() const noexcept {
+    return Ly / static_cast<double>(Ny);
+  }
 };
 
 }  // namespace poisson

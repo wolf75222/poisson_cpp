@@ -32,7 +32,7 @@ struct AMRArrays {
 };
 
 /// Build the array-based AMR view from a fully built Quadtree.
-AMRArrays extract_arrays(const Quadtree& tree);
+[[nodiscard]] AMRArrays extract_arrays(const Quadtree& tree);
 
 /// Write V back from the flat array into the corresponding tree leaves.
 void writeback(Quadtree& tree,
@@ -57,6 +57,7 @@ SORReport sor(AMRArrays& a, SORParams p = {});
 
 /// Compute the FV residual on AMR arrays (in V).
 /// r_i = sum_off w * V_neigh + h_i^2 rho_i / eps0 - Vc_i V_i
-Eigen::VectorXd residual(const AMRArrays& a, double eps0 = 1.0);
+[[nodiscard]] Eigen::VectorXd residual(const AMRArrays& a,
+                                        double eps0 = 1.0);
 
 }  // namespace poisson::amr

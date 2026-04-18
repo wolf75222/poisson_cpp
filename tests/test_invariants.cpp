@@ -205,7 +205,7 @@ TEST_CASE("[invariant] Solver2D: zero input -> zero output",
   Solver2D solver(grid, 1.0, 0.0, 0.0);
   Eigen::MatrixXd V = Eigen::MatrixXd::Zero(N, N);
   const Eigen::MatrixXd rho = Eigen::MatrixXd::Zero(N, N);
-  solver.solve(V, rho, {.tol = 1e-14, .max_iter = 1});
+  (void) solver.solve(V, rho, {.tol = 1e-14, .max_iter = 1});
   // V stays zero under one iteration from zero initial guess.
   REQUIRE(V.cwiseAbs().maxCoeff() == 0.0);
 }
@@ -230,8 +230,8 @@ TEST_CASE("[invariant] Solver2D: linearity under source scaling",
   // SOR to tight tolerance, then check V(alpha rho) == alpha V(rho).
   Eigen::MatrixXd V1 = Eigen::MatrixXd::Zero(N, N);
   Eigen::MatrixXd Va = Eigen::MatrixXd::Zero(N, N);
-  solver.solve(V1, rho,       {.tol = 1e-12, .max_iter = 30000});
-  solver.solve(Va, 3.5 * rho, {.tol = 1e-12, .max_iter = 30000});
+  (void) solver.solve(V1, rho,       {.tol = 1e-12, .max_iter = 30000});
+  (void) solver.solve(Va, 3.5 * rho, {.tol = 1e-12, .max_iter = 30000});
   REQUIRE((Va - 3.5 * V1).cwiseAbs().maxCoeff() < 1e-8);
 }
 
@@ -252,7 +252,7 @@ TEST_CASE("[invariant] Solver2D: reflection symmetry in y (Neumann axis)",
     }
   }
   Eigen::MatrixXd V = Eigen::MatrixXd::Zero(N, N);
-  solver.solve(V, rho, {.tol = 1e-12, .max_iter = 30000});
+  (void) solver.solve(V, rho, {.tol = 1e-12, .max_iter = 30000});
 
   for (int j = 0; j < N; ++j) {
     for (int i = 0; i < N; ++i) {

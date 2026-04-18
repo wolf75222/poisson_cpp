@@ -12,8 +12,9 @@ namespace poisson::fv {
 /// adjacent cells with different relative permittivities: this is the
 /// formula that preserves the normal component of the displacement
 /// D = eps0 eps_r grad V across a dielectric interface.
-inline Eigen::VectorXd harmonic_mean(Eigen::Ref<const Eigen::VectorXd> a,
-                                     Eigen::Ref<const Eigen::VectorXd> b) {
+[[nodiscard]] inline Eigen::VectorXd harmonic_mean(
+    Eigen::Ref<const Eigen::VectorXd> a,
+    Eigen::Ref<const Eigen::VectorXd> b) {
   return (2.0 * a.array() * b.array()) / (a.array() + b.array());
 }
 
@@ -31,11 +32,12 @@ inline Eigen::VectorXd harmonic_mean(Eigen::Ref<const Eigen::VectorXd> a,
 /// \param grid  Node-centered grid.
 /// \param eps0  Vacuum permittivity (default 1.0 for normalized units).
 /// \returns Potential V at the N grid nodes.
-Eigen::VectorXd solve_poisson_1d(Eigen::Ref<const Eigen::VectorXd> rho,
-                                 Eigen::Ref<const Eigen::VectorXd> eps_r,
-                                 double uL,
-                                 double uR,
-                                 const Grid1D& grid,
-                                 double eps0 = 1.0);
+[[nodiscard]] Eigen::VectorXd solve_poisson_1d(
+    Eigen::Ref<const Eigen::VectorXd> rho,
+    Eigen::Ref<const Eigen::VectorXd> eps_r,
+    double uL,
+    double uR,
+    const Grid1D& grid,
+    double eps0 = 1.0);
 
 }  // namespace poisson::fv

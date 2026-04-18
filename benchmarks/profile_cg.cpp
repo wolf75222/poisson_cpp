@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
   Eigen::MatrixXd V(N, N);
   for (int r = 0; r < runs; ++r) {
     V.setZero();
-    poisson::iter::solve_poisson_cg(
+    (void) poisson::iter::solve_poisson_cg(
         V, rho, grid, 1.0, 0.0, 10.0,
         {.tol = 1e-10, .max_iter = 5000},
         /*use_preconditioner=*/false);

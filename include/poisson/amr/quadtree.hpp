@@ -26,10 +26,11 @@ class Quadtree {
   Quadtree(double L, int level_min);
 
   /// Side length of a cell at the given level.
-  double cell_size(uint8_t level) const noexcept;
+  [[nodiscard]] double cell_size(uint8_t level) const noexcept;
 
   /// Geometric center of the given cell key (regardless of it being a leaf).
-  std::pair<double, double> cell_center(CellKey key) const noexcept;
+  [[nodiscard]] std::pair<double, double> cell_center(
+      CellKey key) const noexcept;
 
   /// Subdivide the leaf `key` into its 4 children. Precondition: `key` must
   /// be a leaf (present in the internal map).
@@ -52,26 +53,32 @@ class Quadtree {
 
   /// List of leaf neighbours of `key` on face `dir`.
   /// Returns 0 (boundary), 1 (same level or coarser), or 2 (two finer) keys.
-  std::vector<CellKey> neighbour_leaves(CellKey key, Direction dir) const;
+  [[nodiscard]] std::vector<CellKey> neighbour_leaves(
+      CellKey key, Direction dir) const;
 
   /// Read-only access to a leaf's data (throws if not a leaf).
-  const Cell& at(CellKey key) const { return leaves_.at(key); }
-  Cell& at(CellKey key) { return leaves_.at(key); }
+  [[nodiscard]] const Cell& at(CellKey key) const { return leaves_.at(key); }
+  [[nodiscard]] Cell&       at(CellKey key)       { return leaves_.at(key); }
 
   /// Convenience: is this cell currently a leaf ?
-  bool is_leaf(CellKey key) const noexcept { return leaves_.count(key) > 0; }
+  [[nodiscard]] bool is_leaf(CellKey key) const noexcept {
+    return leaves_.count(key) > 0;
+  }
 
-  std::size_t num_leaves() const noexcept { return leaves_.size(); }
+  [[nodiscard]] std::size_t num_leaves() const noexcept {
+    return leaves_.size();
+  }
 
   /// Direct access to the internal map for iteration, for example:
   ///   `for (const auto& [key, cell] : tree.leaves()) { ... }`.
-  const std::unordered_map<CellKey, Cell>& leaves() const noexcept {
+  [[nodiscard]] const std::unordered_map<CellKey, Cell>& leaves()
+      const noexcept { return leaves_; }
+  [[nodiscard]] std::unordered_map<CellKey, Cell>& leaves() noexcept {
     return leaves_;
   }
-  std::unordered_map<CellKey, Cell>& leaves() noexcept { return leaves_; }
 
-  double L() const noexcept { return L_; }
-  uint8_t level_min() const noexcept { return level_min_; }
+  [[nodiscard]] double  L()         const noexcept { return L_; }
+  [[nodiscard]] uint8_t level_min() const noexcept { return level_min_; }
 
  private:
   double L_;

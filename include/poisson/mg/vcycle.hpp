@@ -16,30 +16,35 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
                int n_iter);
 
 /// Apply the uniform FV Laplacian A V.
-Eigen::MatrixXd laplacian_fv(Eigen::Ref<const Eigen::MatrixXd> V, double h);
+[[nodiscard]] Eigen::MatrixXd laplacian_fv(
+    Eigen::Ref<const Eigen::MatrixXd> V, double h);
 
 /// Restriction by 4-cell averaging: (N, N) -> (N/2, N/2). N must be even.
-Eigen::MatrixXd restrict_avg(Eigen::Ref<const Eigen::MatrixXd> r);
+[[nodiscard]] Eigen::MatrixXd restrict_avg(
+    Eigen::Ref<const Eigen::MatrixXd> r);
 
 /// Piecewise-constant prolongation (order 0): (N/2, N/2) -> (N, N).
-Eigen::MatrixXd prolongate_const(Eigen::Ref<const Eigen::MatrixXd> c);
+[[nodiscard]] Eigen::MatrixXd prolongate_const(
+    Eigen::Ref<const Eigen::MatrixXd> c);
 
 /// Bilinear prolongation (order 2): (M, M) -> (2M, 2M), for cell-centered FV.
 /// Each fine cell gets a weighted combination of the enclosing coarse cell
 /// and its two neighbours in the direction of the fine cell's offset.
-Eigen::MatrixXd prolongate_bilinear(Eigen::Ref<const Eigen::MatrixXd> c);
+[[nodiscard]] Eigen::MatrixXd prolongate_bilinear(
+    Eigen::Ref<const Eigen::MatrixXd> c);
 
 /// Recursive V-cycle multigrid on a uniform grid. Returns the updated V.
 ///
 /// Coarsens by factor 2 down to size <= n_min; smoothes more aggressively at
 /// the coarsest level (no "exact solve" yet, just extra GS sweeps). Port of
 /// `vcycle` from `CourseOnPoisson/notebooks/TP5_AMR_Poisson_2D.ipynb`.
-Eigen::MatrixXd vcycle_uniform(Eigen::MatrixXd V,
-                               const Eigen::MatrixXd& rho,
-                               double h,
-                               int n_pre = 2,
-                               int n_post = 2,
-                               int n_min = 4);
+[[nodiscard]] Eigen::MatrixXd vcycle_uniform(
+    Eigen::MatrixXd V,
+    const Eigen::MatrixXd& rho,
+    double h,
+    int n_pre = 2,
+    int n_post = 2,
+    int n_min = 4);
 
 /// Parameters for the 2-grid composite V-cycle on an AMR mesh.
 struct CompositeParams {

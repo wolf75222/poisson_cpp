@@ -49,7 +49,7 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
   // N >= 384. The two paths are duplicated (not behind a lambda) so the
   // compiler sees each as an independent, fully-inlinable loop and leaves
   // the serial path free of OpenMP instrumentation.
-  constexpr int kOmpThreshold = 384;
+  [[maybe_unused]] constexpr int kOmpThreshold = 384;
   for (int it = 0; it < n_iter; ++it) {
     for (int color = 0; color < 2; ++color) {
 #if defined(POISSON_HAVE_OPENMP)

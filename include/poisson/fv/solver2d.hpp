@@ -53,13 +53,13 @@ class Solver2D {
   /// \param V   initial guess, shape (Nx, Ny). Overwritten with the solution.
   /// \param rho right-hand side, shape (Nx, Ny).
   /// \param p   convergence parameters.
-  Report solve(Eigen::Ref<Eigen::MatrixXd> V,
-               Eigen::Ref<const Eigen::MatrixXd> rho,
-               Params p = {}) const;
+  [[nodiscard]] Report solve(Eigen::Ref<Eigen::MatrixXd> V,
+                              Eigen::Ref<const Eigen::MatrixXd> rho,
+                              Params p = {}) const;
 
-  const Grid2D& grid() const noexcept { return grid_; }
-  double uL() const noexcept { return uL_; }
-  double uR() const noexcept { return uR_; }
+  [[nodiscard]] const Grid2D& grid() const noexcept { return grid_; }
+  [[nodiscard]] double uL() const noexcept { return uL_; }
+  [[nodiscard]] double uR() const noexcept { return uR_; }
 
  private:
   Grid2D grid_;
