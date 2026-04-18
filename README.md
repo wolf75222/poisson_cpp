@@ -41,23 +41,6 @@ Reproduction : <a href="python/make_banner.py"><code>python/make_banner.py</code
 Tous matrix-free (stencils explicites, pas de matrice sparse stockée).
 Conventions de grille et schémas dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Tests
-
-66 tests Catch2, `ctest --test-dir build`. Couvrent :
-
-- Invariants mathématiques (réciprocité de Green, linéarité, symétrie
-  de réflexion) à 1e-13.
-- Lois de conservation (Gauss, énergie, continuité D aux interfaces
-  diélectriques) à 1e-12.
-- 4 snapshots JSON vs les notebooks Python à 1e-10.
-- Convergence O(h²) sur un benchmark Fourier (Jackson ch.2).
-- Scaling CG en O(N), cross-check vs DST.
-
-Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures TP1–TP5),
-[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (benchmarks A/B + profiling).
-
----
-
 ## Quick start
 
 ### Prérequis
@@ -193,6 +176,21 @@ avec `sample` / `xctrace` :
 - `Solver2D::solve` : fold Dirichlet → rhs pour débloquer SIMD, −5 %.
 - CG `apply_neg_laplacian` N=512 : `diag_mat` précomputé hors hot loop, −18 %.
 - OpenMP (opt-in, N ≥ 384) : Solver2D + gs_smooth, ×1.5 à ×1.9.
+
+## Tests
+
+66 tests Catch2, `ctest --test-dir build`. Couvrent :
+
+- Invariants mathématiques (réciprocité de Green, linéarité, symétrie
+  de réflexion) à 1e-13.
+- Lois de conservation (Gauss, énergie, continuité D aux interfaces
+  diélectriques) à 1e-12.
+- 4 snapshots JSON vs les notebooks Python à 1e-10.
+- Convergence O(h²) sur un benchmark Fourier (Jackson ch.2).
+- Scaling CG en O(N), cross-check vs DST.
+
+Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures TP1–TP5),
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (benchmarks A/B + profiling).
 
 ## License
 
