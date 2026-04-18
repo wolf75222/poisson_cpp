@@ -35,11 +35,15 @@ Eigen::MatrixXd poisson_rhs_fv2d(Eigen::Ref<const Eigen::MatrixXd> rho,
                                  double eps, double uL, double uR);
 
 /// High-level solve: CG with optional Jacobi preconditioner.
+/// \param history  optional: if non-null, receives the relative residual
+///                 ||r||_2 / ||b||_2 at every iteration (for plotting
+///                 convergence curves in Python).
 CGReport solve_poisson_cg(Eigen::Ref<Eigen::MatrixXd> V,
                           Eigen::Ref<const Eigen::MatrixXd> rho,
                           const Grid2D& grid,
                           double eps, double uL, double uR,
                           CGParams p = {},
-                          bool use_preconditioner = true);
+                          bool use_preconditioner = true,
+                          std::vector<double>* history = nullptr);
 
 }  // namespace poisson::iter

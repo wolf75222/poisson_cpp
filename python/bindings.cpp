@@ -16,6 +16,7 @@
 #include "poisson/core/grid.hpp"
 #include "poisson/fv/solver1d.hpp"
 #include "poisson/fv/solver2d.hpp"
+#include "poisson/iter/poisson_cg.hpp"
 #include "poisson/linalg/thomas.hpp"
 
 #if defined(POISSON_HAVE_FFTW3)
@@ -111,6 +112,47 @@ PYBIND11_MODULE(poisson_cpp, m) {
            py::arg("max_iter") = 20'000,
            "In-place variant. Requires V and rho to be Fortran-ordered "
            "numpy arrays (`order='F'`) matching Eigen's column-major layout.");
+
+  // --- CG / PCG iterative solvers -----------------------------------------
+  py::class_<poisson::iter::CGParams>(m, "CGParams")
+      .def(py::init<>())
+      .def_readwrite("tol",      &poisson::iter::CGParams::tol)
+      .def_readwrite("max_iter", &poisson::iter::CGParams::max_iter);
+
+  py::class_<poisson::iter::CGReport>(m, "CGReport")
+      .def_readonly("iterations", &poisson::iter::CGReport::iterations)
+      .def_readonly("residual",   &poisson::iter::CGReport::residual)
+      .def("__repr__", [](const poisson::iter::CGReport& r) {
+        return "CGReport(iterations=" + std::to_string(r.iterations) +
+               ", residual=" + std::to_string(r.residual) + ")";
+      });
+
+  m.def("solve_poisson_cg",
+        [](Eigen::Ref<Eigen::MatrixXd> V,
+           Eigen::Ref<const Eigen::MatrixXd> rho,
+           const poisson::Grid2D& grid,
+           double eps, double uL, double uR,
+           double tol, int max_iter,
+           bool use_preconditioner, bool record_history) {
+          std::vector<double> hist;
+          const auto rep = poisson::iter::solve_poisson_cg(
+              V, rho, grid, eps, uL, uR,
+              {.tol = tol, .max_iter = max_iter},
+              use_preconditioner,
+              record_history ? &hist : nullptr);
+          return py::make_tuple(rep, hist);
+        },
+        py::arg("V"), py::arg("rho"), py::arg("grid"),
+        py::arg("eps") = 1.0, py::arg("uL") = 0.0, py::arg("uR") = 0.0,
+        py::arg("tol") = 1e-8, py::arg("max_iter") = 10'000,
+        py::arg("use_preconditioner") = false,
+        py::arg("record_history") = false,
+        "Solve -eps Laplacian V = rho on a cell-centered FV grid with "
+        "Dirichlet in x / Neumann in y, via Conjugate Gradient. "
+        "V must be Fortran-ordered (`order='F'`) and is updated in place. "
+        "Returns (report, history): report carries iteration count and "
+        "final relative residual; history is a list of ||r||/||b|| at "
+        "each iteration when record_history=True, else empty.");
 
 #if defined(POISSON_HAVE_FFTW3)
   py::class_<poisson::spectral::DSTSolver1D>(m, "DSTSolver1D")

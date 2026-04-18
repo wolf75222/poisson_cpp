@@ -3,6 +3,7 @@
 #include <cmath>
 #include <concepts>
 #include <functional>
+#include <vector>
 
 #include <Eigen/Core>
 
@@ -47,11 +48,14 @@ struct CGReport {
 /// \param x           initial guess, overwritten with the solution
 /// \param b           right-hand side
 /// \param p           tolerance and iteration cap
+/// \param history     optional: if non-null, appends `||r||_2 / ||b||_2`
+///                    after every iteration — useful for convergence plots.
 template <MatrixOp Apply>
 CGReport cg(Apply&& apply,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<const Eigen::MatrixXd> b,
-            CGParams p = {}) {
+            CGParams p = {},
+            std::vector<double>* history = nullptr) {
   const double b_norm = b.norm();
   if (b_norm == 0.0) {
     x.setZero();
@@ -61,6 +65,7 @@ CGReport cg(Apply&& apply,
   Eigen::MatrixXd d = r;
   double rr = (r.array() * r.array()).sum();
   double res = std::sqrt(rr) / b_norm;
+  if (history) history->push_back(res);
   int iter = 0;
   for (; iter < p.max_iter && res > p.tol; ++iter) {
     Eigen::MatrixXd Ad = apply(d);
@@ -72,6 +77,7 @@ CGReport cg(Apply&& apply,
     d = r + beta * d;
     rr = rr_new;
     res = std::sqrt(rr) / b_norm;
+    if (history) history->push_back(res);
   }
   return {iter, res};
 }
@@ -83,7 +89,8 @@ template <MatrixOp Apply, MatrixOp Precond>
 CGReport pcg(Apply&& apply, Precond&& precond,
              Eigen::Ref<Eigen::MatrixXd> x,
              Eigen::Ref<const Eigen::MatrixXd> b,
-             CGParams p = {}) {
+             CGParams p = {},
+             std::vector<double>* history = nullptr) {
   const double b_norm = b.norm();
   if (b_norm == 0.0) {
     x.setZero();
@@ -94,6 +101,7 @@ CGReport pcg(Apply&& apply, Precond&& precond,
   Eigen::MatrixXd d = z;
   double rz = (r.array() * z.array()).sum();
   double res = r.norm() / b_norm;
+  if (history) history->push_back(res);
   int iter = 0;
   for (; iter < p.max_iter && res > p.tol; ++iter) {
     Eigen::MatrixXd Ad = apply(d);
@@ -101,6 +109,7 @@ CGReport pcg(Apply&& apply, Precond&& precond,
     x.noalias() += alpha * d;
     r.noalias() -= alpha * Ad;
     res = r.norm() / b_norm;
+    if (history) history->push_back(res);
     if (res <= p.tol) { ++iter; break; }
     z = precond(r);
     const double rz_new = (r.array() * z.array()).sum();

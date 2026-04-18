@@ -254,6 +254,64 @@ coarse-fine (localement conservative).
 
 ---
 
+## CG — Gradient Conjugué (méthode de Krylov)
+
+![CG convergence](figures/cg_convergence.png)
+
+![CG scaling](figures/cg_scaling.png)
+
+**Problème** : `−∇²V = ρ` sur `[0, 1]²` avec Dirichlet uL=0, uR=10 en x
+et Neumann en y, ρ = 0 (rampe linéaire). Trois solveurs itératifs
+comparés à la même tolérance (10⁻¹⁰).
+
+**Solveur** : `poisson::iter::solve_poisson_cg` — matrix-free, templated,
+fold des BCs Dirichlet dans le RHS puis CG pur sur l'opérateur SPD.
+
+**Observations (N = 128, figure convergence)** :
+- **CG** : **187 itérations**, 8.3 ms. Plateau caractéristique à
+  ~10⁻² pendant les premières ~170 itérations (apprentissage des
+  modes propres), puis "falaise super-linéaire" brutale jusqu'à
+  10⁻¹⁰. Comportement typique : en arithmétique exacte, CG termine
+  en ≤ N itérations ; en flottant, 1-2 iters supplémentaires.
+- **PCG (Jacobi)** : **442 itérations**, 22.8 ms. *Plus lent* que
+  CG sur ce problème à ε uniforme (diagonale quasi-constante →
+  Jacobi distrait le subspace Krylov). PCG devient utile quand la
+  diagonale varie fortement.
+- **SOR ω_opt** : **1 443 itérations**, 52.8 ms. Décroissance
+  géométrique régulière sans plateau ni falaise.
+
+**Scaling (figure scaling)** :
+- Itérations : CG et SOR *les deux* en O(N), mais avec CG ~5-6× moins
+  d'itérations que SOR à chaque résolution.
+- Wall time : les deux en O(N³) (N² travail par iter × O(N) iter).
+  Constante : CG ~5× plus rapide que SOR.
+
+**Interprétation** :
+- Pour la rampe linéaire (Laplace homogène, V = rampe), CG trouve le
+  bon sous-espace Krylov tout de suite et converge en ~180 itérations
+  à N=128. SOR doit propager l'information cellule par cellule via
+  ~7N/2 itérations.
+- L'allure "plateau + falaise" de CG est la signature de l'orthogonalité
+  des directions de recherche : tant que l'espace Krylov n'a pas capturé
+  tous les modes lents, la norme L² du résidu reste élevée ; une fois
+  capturés, la convergence devient super-linéaire.
+
+**Usage depuis Python** (via pybind, `solve_poisson_cg`) :
+```python
+import numpy as np
+import poisson_cpp as pc
+
+N = 128
+g   = pc.Grid2D(1.0, 1.0, N, N)
+V   = np.zeros((N, N), order="F")
+rho = np.zeros((N, N), order="F")
+report, history = pc.solve_poisson_cg(
+    V, rho, g, uL=0.0, uR=10.0, tol=1e-10, record_history=True)
+# report.iterations = 187,  len(history) = 188
+```
+
+---
+
 ## Pourquoi utiliser pybind11 plutôt que juste le CLI JSON ?
 
 Le **CLI** (`poisson_demo`) reste le chemin canonique pour les snapshots

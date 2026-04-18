@@ -91,7 +91,8 @@ CGReport solve_poisson_cg(Eigen::Ref<Eigen::MatrixXd> V,
                           const Grid2D& grid,
                           double eps, double uL, double uR,
                           CGParams p,
-                          bool use_preconditioner) {
+                          bool use_preconditioner,
+                          std::vector<double>* history) {
   const double dx2_inv = 1.0 / (grid.dx() * grid.dx());
   const double dy2_inv = 1.0 / (grid.dy() * grid.dy());
   const Eigen::MatrixXd b = poisson_rhs_fv2d(rho, grid, eps, uL, uR);
@@ -107,9 +108,9 @@ CGReport solve_poisson_cg(Eigen::Ref<Eigen::MatrixXd> V,
     auto precond = [D_inv](const Eigen::MatrixXd& r) -> Eigen::MatrixXd {
       return r.cwiseProduct(D_inv);
     };
-    return pcg(apply, precond, V, b, p);
+    return pcg(apply, precond, V, b, p, history);
   }
-  return cg(apply, V, b, p);
+  return cg(apply, V, b, p, history);
 }
 
 }  // namespace poisson::iter
