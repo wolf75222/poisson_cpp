@@ -23,6 +23,24 @@ PYTHONPATH=build/python python3 python/plot_tp_style.py all
 
 Toutes les figures sont écrites dans [`docs/figures/`](figures/).
 
+## Résumé des vérifications numériques
+
+| TP | Quantité mesurée | Valeur | Référence / attendu | Verdict |
+|---|---|---|---|---|
+| TP1 | L∞ relative vs analytique | 3.85×10⁻¹⁵ | ε_mach ≈ 2.2×10⁻¹⁵ | ✅ précision machine |
+| TP1 | ‖V_cpp − V_scipy‖∞ | 7.11×10⁻¹⁴ | ULP-level | ✅ notre Thomas ≡ LAPACK |
+| TP2 | D continuity (max−min)/\|moy\| | 2.2×10⁻¹³ | eps_mach | ✅ conservation exacte |
+| TP3 | y-indépendance `std(V, axis=1)` | 2.6×10⁻¹¹ | ≈ tol SOR | ✅ Neumann y parfait |
+| TP3 | err vs rampe linéaire | 3.3×10⁻⁹ | ≈ tol SOR | ✅ |
+| TP4 | pente log-log vs continu | +2.000 | +2.0 (O(h²)) | ✅ exact |
+| TP4 | err vs mode propre discret | 4.4×10⁻¹⁶ | ε_mach | ✅ DST inverse exact |
+| TP5 | Q_total = ∫∫ρ dA | 0.00503 | πσ² = 0.00503 | ✅ 0 % d'écart |
+| TP5 | V_peak AMR vs DST 255² | 0.5 % | < 1 % (stencil ordre 1) | ✅ cohérent |
+
+Tous les "tests de cohérence" passent à la précision attendue pour chaque
+méthode (machine pour les solveurs directs, tolérance SOR pour les itératifs,
+ordre de discrétisation pour les comparaisons avec une solution continue).
+
 ---
 
 ## TP1 — Poisson 1D avec BCs de Dirichlet
@@ -87,6 +105,37 @@ notre Thomas.
 
 ---
 
+## TP2 — Couches diélectriques 1D (continuité de D)
+
+![TP2](figures/tp2_dielectric.png)
+
+**Problème** : `∇·(ε ∇V) = 0` sur `[0, 1]` avec 3 couches de permittivité
+relative `ε_r(x) = {5, 1, 2}` et Dirichlet `V(0) = 15, V(1) = 0`. Pas de
+charge libre : `∇·D = 0` ⟹ `D = ε·E` doit être **constant** à travers
+tout le domaine, y compris les interfaces.
+
+**Solveur** : Thomas (via le module pybind) sur le système tridiagonal
+issu du schéma VF avec moyenne harmonique de `ε` aux faces.
+
+**Observations** :
+- **Panneau de gauche** : `V(x)` piecewise-linéaire avec pentes
+  inversement proportionnelles à `ε_r` (pente quintuple dans la couche
+  centrale `ε_r = 1` par rapport à la première couche `ε_r = 5`).
+- **Panneau central** : `E(x) = -dV/dx` présente deux sauts bien visibles
+  aux interfaces `x = 0.3` et `x = 0.7`. Le saut de E à chaque interface
+  vérifie `E_1 · ε_1 = E_2 · ε_2` (continuité du flux).
+- **Panneau de droite** : `D(x) = ε · E(x)` est constant à
+  **(max−min)/|moyenne| = 2.2×10⁻¹³** près — la précision machine.
+  La ligne pointillée est la valeur théorique
+  `D_theo = ε₀ · (uL − uR) / (dx · Σ 1/ε_face)` (circuit équivalent de
+  3 condensateurs en série).
+
+Ce test est équivalent à celui de [`tests/test_conservation.cpp`](../tests/test_conservation.cpp)
+("D_n is continuous across interfaces"). Principe physique issu des
+notes de cours §4.2 (*équation de Poisson avec diélectrique*).
+
+---
+
 ## TP3 — SOR red-black 2D
 
 ![TP3](figures/tp3_sor2d.png)
@@ -100,9 +149,15 @@ SOR red-black avec `ω_opt = 2 / (1 + sin(π/N))` auto-sélectionné.
 
 **Observations** (N = 64) :
 - **Panneau de gauche** : heatmap 2D. V ne dépend que de x (comme attendu
-  sous Neumann en y).
+  sous Neumann en y). Vérification numérique : `std(V, axis=1).max() =
+  2.6×10⁻¹¹`, soit 40× le résidu d'arrêt — l'indépendance en y est
+  parfaitement capturée.
 - **Panneau central** : coupe `y = 0.5`. Le SOR coïncide avec la rampe
-  analytique à **~3×10⁻⁹** près (le résidu d'arrêt impose la tolérance).
+  analytique à **3.3×10⁻⁹** près. Note : les points SOR sont aux
+  **centres de cellule** `x_i = (i+0.5)·dx`, pas aux faces — c'est
+  pourquoi le premier point apparaît à `V ≈ 0.08` et le dernier à
+  `V ≈ 9.92` (cellules décalées d'un demi-pas par rapport au bord où
+  `V = uL`, `V = uR`).
 - **Panneau de droite** : convergence en semi-log. Décroissance quasi
   géométrique du résidu `max|V^{k+1} − V^k|` jusqu'à 10⁻¹⁰ en ~743
   itérations. La pente est contrôlée par `ω_opt` ; un ω=1 (Gauss-Seidel)
@@ -124,15 +179,19 @@ SOR red-black avec `ω_opt = 2 / (1 + sin(π/N))` auto-sélectionné.
 diagonalisation exacte du Laplacien discret.
 
 **Observations** :
-- Pente log-log empirique = **+2.000** (attendu +2 pour un schéma ordre 2).
-- À N = 511 (h ≈ 2×10⁻³), l'erreur L∞ vs la solution **continue** vaut
-  ~2×10⁻⁵. Cette erreur est purement de **discrétisation** (différence
-  entre valeurs propres continues (kπ/L)² et discrètes
-  4 sin²(kπh/2)/h²), pas de méthode.
-- Si on compare au **mode propre discret** exact (pas au sinus continu),
-  l'erreur tombe à **~5×10⁻¹⁶** (précision machine), vérifié par
-  [`tests/test_invariants.cpp`](../tests/test_invariants.cpp) — voir
-  "DSTSolver2D recovers a 2D discrete eigenmode".
+- **Courbe bleue (cercles, pente ≈ +2.000)** : erreur vs la solution
+  **continue** `sin(πx)·sin(πy)`. À N = 511 (h ≈ 2×10⁻³), L∞ ≈ 3×10⁻⁶.
+  C'est purement de l'**erreur de discrétisation** (différence entre
+  valeurs propres continues `(kπ/L)²` et discrètes `4 sin²(kπh/2)/h²`),
+  pas de la méthode.
+- **Courbe rouge (carrés)** : erreur vs le **mode propre discret** —
+  on construit `ρ = λ_{1,1}^{disc} · V` avec les valeurs propres
+  discrètes et on vérifie qu'on récupère exactement `V`. Résultat
+  **constant à ~5×10⁻¹⁶** sur toutes les résolutions = **précision
+  machine**, indépendamment de h. Le DST-I inverse le Laplacien
+  discret *exactement*.
+- Vérifié également par [`tests/test_invariants.cpp`](../tests/test_invariants.cpp)
+  ("DSTSolver2D recovers a 2D discrete eigenmode to machine precision").
 
 **Coût** : `O(N² log N)` par solve — dominé par les deux DSTs. À N = 512
 un solve prend ~8 ms (vs ~2.5 s pour SOR à même précision), soit **×300**
@@ -153,21 +212,45 @@ hétérogène avec poids stencil `{2, 1, 2/3, 4/3}` aux interfaces
 coarse-fine (localement conservative).
 
 **Observations** (run : `--Nmin 3 --Nmax 6 --sigma 0.04`) :
-- **400 feuilles** au total, réparties :
-    - level 3 : 48 cellules (base, h ≈ 1/8)
-    - level 4 : 32 cellules
-    - level 5 : 64 cellules
-    - level 6 : 256 cellules (cœur de la Gaussienne, h ≈ 1/64)
+- **400 feuilles** au total : level 3 → 48, level 4 → 32, level 5 → 64,
+  level 6 → 256 (cœur de la Gaussienne, h ≈ 1/64).
 - Un maillage uniforme à level 6 aurait 4⁶ = **4 096 cellules** ⇒ gain
   **×10.2** en nombre d'inconnues pour une précision équivalente dans
   la zone d'intérêt.
-- La contrainte 2:1 entre cellules voisines est enforcée par
-  `Quadtree::balance_2to1` et vérifiée par
-  [`tests/test_quadtree.cpp`](../tests/test_quadtree.cpp).
-- Conservation locale des flux : garantie par construction du stencil
-  hétérogène, et vérifiée numériquement par
-  [`tests/test_conservation.cpp`](../tests/test_conservation.cpp)
-  (test "per-cell flux balance to tolerance").
+
+### Vérifications physiques
+
+1. **Charge totale par loi de Gauss** :
+   ```
+   ∫∫ ρ dx dy (numérique) = 0.00503
+   πσ² (théorique sur R²)  = 0.00503    → err rel = 0.0 %
+   ```
+   La somme discrète `Σ ρ_i · h_i²` sur toutes les feuilles reproduit
+   exactement `πσ²` (intégrale analytique de `exp(-r²/σ²)` sur le plan).
+   Confirme que (a) le schéma d'évaluation de `ρ` au centre de cellule
+   est cohérent, et (b) la décroissance exponentielle de la Gaussienne
+   fait que la contribution hors-boîte est négligeable à notre σ.
+
+2. **Comparaison V_peak vs DST2D sur maillage uniforme fin** :
+   ```
+   V_peak AMR (400 cellules)  = 2.3006×10⁻³
+   V_peak DST2D à N = 255²    = 2.3130×10⁻³
+   écart relatif              = 0.5 %
+   ```
+   Le solveur AMR (avec stencil hétérogène aux interfaces coarse-fine,
+   stopping tol = 10⁻⁷) reproduit le DST2D uniform-fin à **0.5%** près,
+   avec ~10× moins de cellules. L'écart vient principalement de
+   l'ordre-1 du stencil aux interfaces 2:1 — d'où la motivation de
+   la prolongation bilinéaire dans le V-cycle composite.
+
+3. **Contrainte 2:1** entre cellules voisines : enforcée par
+   `Quadtree::balance_2to1` et vérifiée par
+   [`tests/test_quadtree.cpp`](../tests/test_quadtree.cpp).
+
+4. **Conservation locale des flux** : garantie par construction du
+   stencil hétérogène, vérifiée par
+   [`tests/test_conservation.cpp`](../tests/test_conservation.cpp)
+   (test "per-cell flux balance to tolerance").
 
 ---
 

@@ -162,9 +162,21 @@ def tp3() -> None:
             if rep.iterations < step:
                 break
 
+    # Cell centers (Solver2D is cell-centered).
     xc = (np.arange(N) + 0.5) / N
     yc = (np.arange(N) + 0.5) / N
     X, Y = np.meshgrid(xc, yc, indexing="ij")
+
+    # Analytical continuous ramp evaluated at cell centers.
+    V_analytic = uL + (uR - uL) * xc
+
+    # --- Coherence checks ---------------------------------------------------
+    # 1. y-independence: V(i, j) should equal V(i, j') for all j, j'.
+    y_std = float(np.max(V.std(axis=1)))
+    # 2. Error vs the analytical ramp at cell centers.
+    err_x = float(np.max(np.abs(V - V_analytic[:, None])))
+    # 3. Residual at the final iterate.
+    resid_final = float(history[-1]) if history else np.nan
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     im = axes[0].pcolormesh(X, Y, V, shading="auto", cmap="viridis")
@@ -172,8 +184,7 @@ def tp3() -> None:
                 aspect="equal")
     fig.colorbar(im, ax=axes[0])
 
-    V_analytic = uL + (uR - uL) * xc
-    axes[1].plot(xc, V[:, N // 2], "o", ms=3, label="SOR")
+    axes[1].plot(xc, V[:, N // 2], "o", ms=3, label="SOR (cell center)")
     axes[1].plot(xc, V_analytic, "k--", lw=1, label="analytique")
     axes[1].set(title=f"Coupe y = 0.5 (N = {N})", xlabel="x", ylabel="V")
     axes[1].legend(); axes[1].grid(alpha=0.3)
@@ -185,9 +196,8 @@ def tp3() -> None:
 
     out = FIG_DIR / "tp3_sor2d.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    err = float(np.max(np.abs(V - V_analytic[:, None])))
-    print(f"[tp3] {total} iter, résidu final {history[-1]:.2e}, "
-          f"erreur vs linéaire {err:.2e}  →  {out}")
+    print(f"[tp3] {total} iter, résidu final {resid_final:.2e}, "
+          f"err vs ramp {err_x:.2e}, y-std max {y_std:.2e}  →  {out}")
 
 
 # ---------------------------------------------------------------------------
@@ -203,38 +213,55 @@ def tp4() -> None:
 
     L = 1.0
     Ns = [15, 31, 63, 127, 255, 511]
-    errs, hs = [], []
+    errs_cont, errs_disc, hs = [], [], []
     a = math.pi / L
     for N in Ns:
         h = L / (N + 1)
-        rho = np.zeros((N, N))
-        V_theo = np.zeros((N, N))
+        # Continuous manufactured solution (analytical Laplacian).
+        V_cont = np.zeros((N, N))
+        # Discrete mode: eigenvector of the 5-point Laplacian on this grid.
+        V_disc = np.zeros((N, N))
         for i in range(1, N + 1):
             for j in range(1, N + 1):
                 x, y = i * h, j * h
-                v = math.sin(a * x) * math.sin(a * y)
-                V_theo[i - 1, j - 1] = v
-                rho[i - 1, j - 1] = 2 * a * a * v    # -Laplacian = 2 a² V
+                V_cont[i - 1, j - 1] = math.sin(a * x) * math.sin(a * y)
+                V_disc[i - 1, j - 1] = V_cont[i - 1, j - 1]   # same samples
+        # rho for the continuous formulation: rho = 2 a² V (so eps0=1).
+        rho_cont = 2 * a * a * V_cont
+        # rho for the discrete formulation: rho = lambda_{1,1} V where
+        # lambda_{k,l} = 4 sin²(k pi / (2(N+1))) / h² + same in y.
+        sx = math.sin(math.pi / (2 * (N + 1)))
+        lam = 2 * 4 / (h * h) * sx * sx
+        rho_disc = lam * V_disc
+
         dst = pc.DSTSolver2D(N, N, L, L, 1.0)
-        V = dst.solve(rho)
-        err = float(np.max(np.abs(V - V_theo)))
-        errs.append(err); hs.append(h)
+        err_cont = float(np.max(np.abs(dst.solve(rho_cont) - V_cont)))
+        err_disc = float(np.max(np.abs(dst.solve(rho_disc) - V_disc)))
+        errs_cont.append(err_cont); errs_disc.append(err_disc); hs.append(h)
 
-    hs = np.array(hs); errs = np.array(errs)
-    # fit slope in log-log
-    slope, intercept = np.polyfit(np.log(hs), np.log(errs), 1)
+    hs = np.array(hs); errs_cont = np.array(errs_cont)
+    errs_disc = np.array(errs_disc)
+    slope, intercept = np.polyfit(np.log(hs), np.log(errs_cont), 1)
 
-    fig, ax = plt.subplots(figsize=(7, 5))
-    ax.loglog(hs, errs, "o-", ms=6, label=f"DST 2D (pente ≈ {slope:.2f})")
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    ax.loglog(hs, errs_cont, "o-", ms=6,
+              label=f"vs $V_\\mathrm{{cont}} = \\sin\\pi x \\sin\\pi y$"
+                    f" (pente ≈ {slope:.2f})")
+    ax.loglog(hs, errs_disc, "s-", ms=6, color="C3",
+              label="vs mode propre discret")
     ax.loglog(hs, np.exp(intercept) * hs**2, "k--", lw=1,
               label="référence $h^2$")
-    ax.set(xlabel="h", ylabel=r"$\|V_\mathrm{num} - V_\mathrm{anal}\|_\infty$",
-           title="TP4 — Convergence spectrale sur $V = \\sin(\\pi x)\\sin(\\pi y)$")
+    ax.axhline(np.finfo(float).eps * 4, color="gray", ls=":", lw=1,
+               label=r"$\approx 4\,\varepsilon_\mathrm{mach}$")
+    ax.set(xlabel="h", ylabel=r"$\|V_\mathrm{num} - V_\mathrm{ref}\|_\infty$",
+           title="TP4 — Erreur DST2D vs référence continue / discrète")
     ax.grid(alpha=0.3, which="both")
     ax.legend()
     out = FIG_DIR / "tp4_spectral_convergence.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp4] pente empirique = {slope:.3f} (attendu +2.0)  →  {out}")
+    print(f"[tp4] pente empirique = {slope:.3f} (attendu +2.0)")
+    print(f"[tp4] err discrete max = {errs_disc.max():.2e} "
+          f"(attendu ~ eps_mach)  →  {out}")
 
 
 # ---------------------------------------------------------------------------
@@ -256,12 +283,39 @@ def tp5() -> None:
     with open(snap) as f:
         data = json.load(f)
     cells = data["cells"]
+    sigma = data["sigma"]
 
     xs = np.array([c["x"] for c in cells])
     ys = np.array([c["y"] for c in cells])
     hs = np.array([c["h"] for c in cells])
     Vs = np.array([c["V"] for c in cells])
+    rhos = np.array([c["rho"] for c in cells])
     levels = np.array([c["level"] for c in cells])
+    areas = hs ** 2
+
+    # --- Physical coherence checks -----------------------------------------
+    # 1. Total integrated charge vs theoretical (Gaussian exp(-r²/σ²)).
+    Q_num = float((rhos * areas).sum())
+    Q_theo = math.pi * sigma * sigma          # ∫∫ exp(-r²/σ²) dA on R²
+    # 2. Peak V should occur at (0.5, 0.5).
+    i_peak = int(np.argmax(Vs))
+    x_peak, y_peak, V_peak = xs[i_peak], ys[i_peak], Vs[i_peak]
+    # 3. Cross-check peak V against DSTSolver2D on a fine uniform grid
+    #    (same problem, same sigma, same box): the two should agree to a
+    #    few percent despite the AMR discretisation.
+    V_peak_ref = None
+    if HAVE_PC and pc.has_fftw3:
+        Nref = 255
+        h_ref = 1.0 / (Nref + 1)
+        rho_ref = np.zeros((Nref, Nref))
+        for i in range(1, Nref + 1):
+            for j in range(1, Nref + 1):
+                x, y = i * h_ref, j * h_ref
+                r2 = (x - 0.5) ** 2 + (y - 0.5) ** 2
+                rho_ref[i - 1, j - 1] = math.exp(-r2 / (sigma * sigma))
+        V_ref = pc.DSTSolver2D(Nref, Nref, 1.0, 1.0, 1.0).solve(rho_ref)
+        # Peak of the uniform reference.
+        V_peak_ref = float(V_ref.max())
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -294,14 +348,112 @@ def tp5() -> None:
     n_by_level = {int(lv): int((levels == lv).sum()) for lv in np.unique(levels)}
     uniform = 4 ** max(n_by_level)
     gain = uniform / len(cells)
-    print(f"[tp5] leaves per level: {n_by_level}")
-    print(f"[tp5] gain vs uniform at level {max(n_by_level)}: "
-          f"×{gain:.1f}  →  {out}")
+    print(f"[tp5] leaves per level: {n_by_level}  (gain ×{gain:.1f})")
+    print(f"[tp5] Q_total num = {Q_num:.4f}  "
+          f"(théorique πσ² = {Q_theo:.4f}, "
+          f"err rel {abs(Q_num-Q_theo)/Q_theo:.1%})")
+    print(f"[tp5] V_peak AMR = {V_peak:.4e} @ ({x_peak:.3f}, {y_peak:.3f})")
+    if V_peak_ref is not None:
+        rel = abs(V_peak - V_peak_ref) / V_peak_ref
+        print(f"[tp5] V_peak DST 255² = {V_peak_ref:.4e}  → "
+              f"écart AMR vs uniform {rel:.1%}")
+    print(f"[tp5] → {out}")
+
+
+# ---------------------------------------------------------------------------
+# TP2 — 1D Poisson with a layered dielectric.
+#
+# No free charge (ρ = 0), so ∇·D = 0  ⇒  D = ε·E is constant across the
+# whole domain, including through interfaces between layers. The potential
+# V is piecewise linear with a slope inversely proportional to ε in each
+# layer. This is a textbook continuity-of-D test (Griffiths ch. 4).
+# ---------------------------------------------------------------------------
+
+def tp2() -> None:
+    # Snapshot via CLI (Solver1D dielectric is not yet in the pybind module).
+    root = Path(__file__).resolve().parent.parent
+    snap = root / "data" / "snapshots" / "tp2_dielectric.json"
+    # The CLI's poisson1d currently assumes uniform eps=1. Build the snapshot
+    # from scratch using the existing reference snapshot schema (see
+    # python/dump_reference.py for a producer). For the figure we fall back
+    # to a pure Python implementation that mirrors the C++ Solver1D
+    # dielectric stencil (harmonic-mean face permittivity, tridiagonal).
+    N = 200
+    L, uL, uR, eps0 = 1.0, 15.0, 0.0, 1.0
+    # 3-layer dielectric: ε_r(x) = 5 for x < 0.3, 1 for 0.3 ≤ x < 0.7, 2 else.
+    x = np.linspace(0.0, L, N)
+    eps_r = np.where(x < 0.3, 5.0, np.where(x < 0.7, 1.0, 2.0))
+    # Harmonic mean at faces (indices 0..N-2 → face between cell i and i+1).
+    eps_face = 2 * eps_r[:-1] * eps_r[1:] / (eps_r[:-1] + eps_r[1:])
+    # Tridiagonal: - (eps_{i-1/2} V_{i-1} - (eps_{i-1/2}+eps_{i+1/2}) V_i
+    #               + eps_{i+1/2} V_{i+1}) / dx² = ρ_i (= 0 here)
+    # Boundary: V(0) = uL, V(N-1) = uR.
+    dx = L / (N - 1)
+    rho = np.zeros(N)
+    a = np.zeros(N); b = np.zeros(N); c = np.zeros(N)
+    b[0] = 1.0; rhs = rho.copy(); rhs[0] = uL
+    for i in range(1, N - 1):
+        a[i] = -eps_face[i - 1] / dx ** 2
+        c[i] = -eps_face[i]     / dx ** 2
+        b[i] = -(a[i] + c[i])
+        rhs[i] = 0.0
+    b[-1] = 1.0; rhs[-1] = uR
+    if HAVE_PC:
+        V = pc.thomas(a, b, c, rhs)
+    else:
+        from scipy.linalg import solve_banded
+        ab = np.zeros((3, N)); ab[0, 1:] = c[:-1]; ab[1, :] = b; ab[2, :-1] = a[1:]
+        V = solve_banded((1, 1), ab, rhs)
+
+    # Electric field and displacement.
+    E = -(V[1:] - V[:-1]) / dx                    # E at faces (size N-1)
+    D = eps0 * eps_face * E                       # D at faces
+    # "Theoretical": since ∇·D = 0 and no surface charges, D must be the
+    # same constant everywhere. Solve for it from the total potential drop:
+    #   V_uL - V_uR = Σ D_i · dx / (ε_face_i · ε₀)
+    D_theo = eps0 * (uL - uR) / (dx * np.sum(1.0 / eps_face))
+
+    D_var_rel = float((D.max() - D.min()) / abs(D.mean()))
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+    # V(x) with ε zones shaded.
+    ax = axes[0]
+    ax.plot(x, V, lw=1.2, color="C0")
+    for lo, hi, label, color in [(0, 0.3, "ε_r=5", "gold"),
+                                  (0.3, 0.7, "ε_r=1", "white"),
+                                  (0.7, 1.0, "ε_r=2", "palegreen")]:
+        if color != "white":
+            ax.axvspan(lo, hi, alpha=0.25, color=color, label=label)
+    ax.set(title="TP2 — V(x) avec couches diélectriques",
+           xlabel="x", ylabel="V(x)")
+    ax.legend(); ax.grid(alpha=0.3)
+
+    # E(x) showing the jumps at interfaces.
+    x_face = (x[:-1] + x[1:]) / 2
+    axes[1].plot(x_face, E, lw=1.2, color="C1")
+    axes[1].set(title="E(x) = −dV/dx aux faces",
+                xlabel="x", ylabel="E")
+    axes[1].grid(alpha=0.3)
+
+    # D(x) — must be flat to machine precision.
+    axes[2].plot(x_face, D, lw=1.5, color="C2", label="D_num")
+    axes[2].axhline(D_theo, color="k", ls="--", lw=1, label="D théorique")
+    axes[2].set(title=f"D = ε·E (continuité : "
+                      f"(max−min)/|moy| = {D_var_rel:.1e})",
+                xlabel="x", ylabel="D")
+    axes[2].legend(); axes[2].grid(alpha=0.3)
+
+    out = FIG_DIR / "tp2_dielectric.png"
+    fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
+    print(f"[tp2] D_num ∈ [{D.min():.4f}, {D.max():.4f}]  "
+          f"variation relative {D_var_rel:.2e}  →  {out}")
+    _ = snap  # suppress unused-name warning
 
 
 # ---------------------------------------------------------------------------
 
-_DISPATCH = {"tp1": tp1, "tp3": tp3, "tp4": tp4, "tp5": tp5}
+_DISPATCH = {"tp1": tp1, "tp2": tp2, "tp3": tp3, "tp4": tp4, "tp5": tp5}
 
 
 def main() -> int:
