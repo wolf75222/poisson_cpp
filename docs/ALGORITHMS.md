@@ -1,7 +1,7 @@
 # Algorithmes
 
-Pseudocode des algorithmes implémentés dans la librairie, avec les
-liens vers le code C++ et les concepts physiques sous-jacents.
+Pseudocode de chaque solveur, avec lien vers le fichier C++
+correspondant.
 
 ## Équation modèle
 
@@ -36,9 +36,9 @@ où `F_face` est le flux à travers chaque face. C'est le schéma à
 ```
 
 Aux faces entre deux cellules de permittivités différentes, on utilise
-la **moyenne harmonique** `ε_face = 2·ε_a·ε_b / (ε_a + ε_b)` : c'est la
+la moyenne harmonique `ε_face = 2·ε_a·ε_b / (ε_a + ε_b)` : c'est la
 seule qui préserve la continuité du déplacement normal
-`D·n = ε·∂V/∂n` à travers l'interface, cf. test
+`D·n = ε·∂V/∂n` à travers l'interface, cf.
 [`test_conservation.cpp`](../tests/test_conservation.cpp).
 
 ---
@@ -51,7 +51,7 @@ Utilisé par `fv::Solver1D` (Poisson 1D). Code :
 
 ```
 function thomas(a, b, c, d):      # a: sub-diag, b: diag, c: super-diag
-  # Forward sweep — élimination gaussienne
+  # Forward sweep (élimination gaussienne)
   for i = 1 .. N−1:
     m     = a[i] / b[i−1]
     b[i] -= m · c[i−1]
@@ -91,18 +91,17 @@ function sor_redblack(V, rho, Vw, Ve, Vs, Vn, Vc, omega, tol):
   until max_diff < tol
 ```
 
-Choix `ω_opt = 2 / (1 + sin(π/N))` pour une grille N×N : converge en
-`O(N)` itérations vs `O(N²)` pour ω=1 (Gauss-Seidel pur). Le
-red-black split rend chaque demi-sweep **data-parallel** (aucune
-cellule rouge ne partage un voisin avec une autre cellule rouge).
-L'implémentation fait les deux demi-sweeps en place pour économiser
-un buffer scratch.
+Avec `ω_opt = 2 / (1 + sin(π/N))` sur une grille N×N la convergence
+est en O(N) itérations (vs O(N²) pour ω=1, Gauss-Seidel pur). Le
+red-black split rend chaque demi-sweep data-parallèle : aucune cellule
+rouge ne partage un voisin avec une autre cellule rouge. Les deux
+demi-sweeps se font en place.
 
 ---
 
 ## 3. DST-I spectrale 2D
 
-Inversion **exacte** du Laplacien discret en `O(N² log N)` via deux
+Inversion exacte du Laplacien discret en O(N² log N) via deux
 transformées sinus discrètes. Utilisé par `spectral::DSTSolver2D`.
 Code : [`src/spectral/dst2d.cpp`](../src/spectral/dst2d.cpp).
 
@@ -165,12 +164,12 @@ Pour une cellule feuille face à un voisin sur une face donnée :
 | Plus grossier | 2/3 | 2/3 (×1 voisin) |
 | Plus fin (2 voisins) | 4/3 | 2/3 (×2 voisins) |
 
-Ces poids sont **localement conservatifs** : l'identité `Σ F_face = h²·ρ`
-est vérifiée à chaque cellule par
+Poids localement conservatifs : l'identité `Σ F_face = h²·ρ` est
+vérifiée à chaque cellule par
 [`test_conservation.cpp`](../tests/test_conservation.cpp). La
 contrainte 2:1 (pas plus d'un niveau d'écart entre voisins) garantit
-que ce stencil suffit ; sans elle, il faudrait des règles pour 4:1, 8:1,
-etc.
+que ce stencil suffit ; sans elle, il faudrait des règles pour 4:1,
+8:1, etc.
 
 ### SOR AMR
 
@@ -201,8 +200,8 @@ function amr_sor(arr, omega, eps0, tol):
 
 ## 5. V-cycle multigrille uniforme
 
-Accélère la convergence d'un smoother GS en travaillant sur plusieurs
-échelles de grille. Complexité `O(N²)` totale avec un bon smoother.
+Travaille sur plusieurs échelles de grille ; corrige les modes bas-
+fréquence qu'un smoother GS ne tue que lentement. Coût total O(N²).
 Code : [`src/mg/vcycle.cpp`](../src/mg/vcycle.cpp).
 
 ```
@@ -228,9 +227,8 @@ bilinéaire exacte sur les polynômes affines (testée dans
 
 ## 6. V-cycle composite 2-grid sur AMR
 
-Accélère la convergence du SOR sur AMR en couplant avec un V-cycle
-uniforme sur une grille grossière équivalente. Code : même fichier,
-fonction `vcycle_amr_composite`.
+Couple le SOR AMR avec un V-cycle uniforme sur une grille grossière
+équivalente. Code : même fichier, fonction `vcycle_amr_composite`.
 
 ```
 function vcycle_amr_composite(arr, tree, n_pre, n_post, n_coarse_cycles,
@@ -262,8 +260,9 @@ function vcycle_amr_composite(arr, tree, n_pre, n_post, n_coarse_cycles,
   amr_sor(arr, omega, eps0, max_iter = n_post)
 ```
 
-Facteur de réduction par cycle observé ~0.7 (non-Galerkin coarse
-operator). Un vrai multigrille Galerkin atteindrait ~0.1.
+Facteur de réduction par cycle observé ~0.7 (re-discrétisation sur la
+grille grossière, pas Galerkin). Un multigrille Galerkin atteindrait
+~0.1.
 
 ---
 
@@ -316,14 +315,14 @@ function pcg(apply, precond, x, b, tol, max_iter):   # precond(r) = M⁻¹·r
   return x
 ```
 
-Pour notre opérateur FV 2D (Dirichlet x, Neumann y), on replie d'abord
-les valeurs de bord dans un rhs effectif :
+Pour l'opérateur FV 2D Dirichlet x / Neumann y, on replie les valeurs
+de bord dans un rhs effectif :
 
 ```
 rhs_bc = rho / eps + 2·uL/dx²·e_{i=0} + 2·uR/dx²·e_{i=Nx−1}
 ```
 
-puis CG s'applique sur l'opérateur zero-BC (strictement SPD).
+CG s'applique alors sur l'opérateur zero-BC, qui est SPD.
 
 ---
 

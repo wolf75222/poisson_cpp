@@ -38,10 +38,9 @@ Reproduction : <a href="python/make_banner.py"><code>python/make_banner.py</code
 | [`amr::Quadtree` + `sor`](include/poisson/amr/solver.hpp) | Quadtree Morton + FV hétérogène | O(nb_leaves × iter) | Dirichlet V = 0 au bord |
 | [`mg::vcycle_amr_composite`](include/poisson/mg/vcycle.hpp) | V-cycle 2-grid composite AMR | O(nb_leaves) par cycle | Dirichlet V = 0 |
 
-Tous matrix-free (stencils explicites, pas de matrice sparse stockée).
-
-- Pseudocode et choix physiques : [`docs/ALGORITHMS.md`](docs/ALGORITHMS.md).
-- Schémas modules / conventions de grille : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Tous matrix-free. Pseudocode de chaque solveur :
+[**docs/ALGORITHMS.md**](docs/ALGORITHMS.md). Conventions de grille
+et schémas modules : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Quick start
 
