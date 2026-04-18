@@ -11,7 +11,10 @@ set(TEST_SOURCES
   test_thomas.cpp
   test_solver1d.cpp
   test_dielectric.cpp
-  test_solver2d.cpp)
+  test_solver2d.cpp
+  test_morton.cpp
+  test_quadtree.cpp
+  test_amr_solver.cpp)
 
 if(POISSON_HAVE_FFTW3)
   list(APPEND TEST_SOURCES test_dst1d.cpp test_dst2d.cpp)
