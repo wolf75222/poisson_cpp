@@ -15,9 +15,12 @@
 
 #include <Eigen/Core>
 
+#include "poisson/amr/quadtree.hpp"
+#include "poisson/amr/solver.hpp"
 #include "poisson/core/grid.hpp"
 #include "poisson/fv/solver2d.hpp"
 #include "poisson/linalg/thomas.hpp"
+#include "poisson/mg/vcycle.hpp"
 
 #if defined(POISSON_HAVE_FFTW3)
 #  include "poisson/spectral/dst2d.hpp"
@@ -95,6 +98,52 @@ int main(int argc, char** argv) {
     std::cout << "spectral2d  N=" << N << "x" << N << "  " << ms << " ms\n";
   }
 #endif
+
+  // mg::gs_smooth on a uniform grid. Isolates the smoother kernel from the
+  // full V-cycle so we see the effect of hot-loop micro-optimizations.
+  {
+    Eigen::MatrixXd V   = Eigen::MatrixXd::Zero(N, N);
+    Eigen::MatrixXd rho = Eigen::MatrixXd::Random(N, N);
+    const double h = 1.0 / N;
+    const double ms = bench(
+        [&] { poisson::mg::gs_smooth(V, rho, h, 50); },
+        repeats);
+    std::cout << "gs_smooth   N=" << N << "x" << N << "  " << ms << " ms"
+              << "  (50 sweeps)\n";
+  }
+
+  // AMR SOR on a moderately refined quadtree. The leaf count drives the
+  // hot-loop cost, so we report both the wall time and leaf count.
+  {
+    poisson::amr::Quadtree tree(1.0, 4);   // base 16x16
+    auto pred = [](poisson::amr::CellKey k) {
+      const uint8_t lv = poisson::amr::level_of(k);
+      if (lv >= 6) return false;
+      const uint32_t i = poisson::amr::i_of(k), j = poisson::amr::j_of(k);
+      const double hh = 1.0 / (1u << lv);
+      const double x = (i + 0.5) * hh, y = (j + 0.5) * hh;
+      const double r2 = (x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5);
+      return r2 < 0.03;
+    };
+    auto rho_fn = [](double x, double y) {
+      const double r2 = (x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5);
+      return std::exp(-r2 / 0.01);
+    };
+    tree.build(pred, /*level_max=*/6, rho_fn);
+    auto arr = poisson::amr::extract_arrays(tree);
+    const auto n_leaves = arr.keys.size();
+
+    auto arr0 = arr;   // snapshot so each run starts from the same V = 0
+    const double ms = bench(
+        [&] {
+          arr = arr0;
+          poisson::amr::sor(arr, {.omega = 1.85, .tol = 0.0, .max_iter = 200,
+                                   .eps0 = 1.0});
+        },
+        repeats);
+    std::cout << "amr_sor     leaves=" << n_leaves
+              << "  " << ms << " ms  (200 sweeps)\n";
+  }
 
   return 0;
 }

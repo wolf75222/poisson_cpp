@@ -90,6 +90,16 @@ SORReport sor(AMRArrays& a, SORParams p) {
   if (!(p.omega > 0.0 && p.omega < 2.0))
     throw std::invalid_argument("sor: omega must be in (0, 2)");
 
+  // Precompute per-cell scalars that are invariant across iterations:
+  //   rhs(i)    = h(i)^2 rho(i) / eps0       (source term in V units)
+  //   Vc_inv(i) = 1 / Vc(i)                  (avoid division in hot loop)
+  // This turns the inner loop's (2 div + 1 mul) into (2 mul + 0 div),
+  // which is ~3x cheaper on modern CPUs.
+  const Eigen::VectorXd rhs    = a.h.array().square() * a.rho.array() / p.eps0;
+  const Eigen::VectorXd Vc_inv = a.Vc.array().inverse();
+  const double omega = p.omega;
+  const double one_minus_omega = 1.0 - omega;
+
   double max_diff = 0.0;
   int iter = 0;
   for (iter = 0; iter < p.max_iter; ++iter) {
@@ -102,9 +112,10 @@ SORReport sor(AMRArrays& a, SORParams p) {
         const int64_t n1 = a.nb1(i, d);
         if (n1 >= 0) s += a.w1(i, d) * a.V(n1);
       }
-      const double V_gs = (s + a.h(i) * a.h(i) * a.rho(i) / p.eps0) / a.Vc(i);
-      const double V_new = (1.0 - p.omega) * a.V(i) + p.omega * V_gs;
-      const double diff = std::abs(V_new - a.V(i));
+      const double V_gs = (s + rhs(i)) * Vc_inv(i);
+      const double V_i  = a.V(i);
+      const double V_new = one_minus_omega * V_i + omega * V_gs;
+      const double diff = std::abs(V_new - V_i);
       if (diff > max_diff) max_diff = diff;
       a.V(i) = V_new;
     }

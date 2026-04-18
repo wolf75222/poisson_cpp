@@ -55,6 +55,7 @@ Solver2D::Solver2D(const Grid2D& grid,
   // Neumann in y: Vn on the last row and Vs on the first are kept at zero.
 
   Vc_ = Ve_ + Vw_ + Vn_ + Vs_;
+  Vc_inv_ = Vc_.cwiseInverse();
 }
 
 Solver2D::Solver2D(const Grid2D& grid, double eps, double uL, double uR)
@@ -77,40 +78,30 @@ Solver2D::Report Solver2D::solve(Eigen::Ref<Eigen::MatrixXd> V,
     w = 2.0 / (1.0 + std::sin(std::numbers::pi / std::max(Nx, Ny)));
   }
 
-  // Scratch buffer for the neighbour-sum across the whole grid, reused
-  // across iterations to avoid allocations in the hot loop.
-  Eigen::MatrixXd neighbour_sum(Nx, Ny);
-
+  const double one_minus_w = 1.0 - w;
   double max_diff = 0.0;
   int iter = 0;
   for (iter = 0; iter < p.max_iter; ++iter) {
     max_diff = 0.0;
 
+    // True in-place red-black Gauss-Seidel with SOR. Neighbour sums are
+    // computed cell-by-cell (no N x N scratch buffer, no 2x work for the
+    // unused color). Boundary terms are folded into the `Vw_(0, j) * uL_`
+    // and `Ve_(Nx-1, j) * uR_` branches; `Vs_` / `Vn_` are zero on the
+    // Neumann edges so a single access is safe everywhere.
     for (int color = 0; color < 2; ++color) {
-      // Fully vectorised neighbour sum including ghost-cell Dirichlet terms.
-      neighbour_sum.setZero();
-      neighbour_sum.bottomRows(Nx - 1).array() +=
-          Vw_.bottomRows(Nx - 1).array() * V.topRows(Nx - 1).array();
-      neighbour_sum.topRows(Nx - 1).array() +=
-          Ve_.topRows(Nx - 1).array() * V.bottomRows(Nx - 1).array();
-      neighbour_sum.rightCols(Ny - 1).array() +=
-          Vs_.rightCols(Ny - 1).array() * V.leftCols(Ny - 1).array();
-      neighbour_sum.leftCols(Ny - 1).array() +=
-          Vn_.leftCols(Ny - 1).array() * V.rightCols(Ny - 1).array();
-      neighbour_sum.row(0).array()      += Vw_.row(0).array()      * uL_;
-      neighbour_sum.row(Nx - 1).array() += Ve_.row(Nx - 1).array() * uR_;
-
-      // Update cells of the current color. Eigen stores matrices in
-      // column-major order, so we iterate with j outer and i inner for
-      // cache locality. The inner loop has no colour branch: we step i
-      // by 2 starting at the right offset for column j.
-      const double one_minus_w = 1.0 - w;
       for (int j = 0; j < Ny; ++j) {
-        const int istart = (j + color) & 1;
-        for (int i = istart; i < Nx; i += 2) {
-          const double V_gs = (neighbour_sum(i, j) + rho(i, j)) / Vc_(i, j);
-          const double V_new = one_minus_w * V(i, j) + w * V_gs;
-          const double diff = std::abs(V_new - V(i, j));
+        for (int i = (j + color) & 1; i < Nx; i += 2) {
+          double s = 0.0;
+          s += (i > 0)      ? Vw_(i, j) * V(i - 1, j)  : Vw_(0, j) * uL_;
+          s += (i < Nx - 1) ? Ve_(i, j) * V(i + 1, j)  : Ve_(Nx - 1, j) * uR_;
+          if (j > 0)      s += Vs_(i, j) * V(i, j - 1);
+          if (j < Ny - 1) s += Vn_(i, j) * V(i, j + 1);
+
+          const double V_gs = (s + rho(i, j)) * Vc_inv_(i, j);
+          const double V_i  = V(i, j);
+          const double V_new = one_minus_w * V_i + w * V_gs;
+          const double diff = std::abs(V_new - V_i);
           if (diff > max_diff) max_diff = diff;
           V(i, j) = V_new;
         }

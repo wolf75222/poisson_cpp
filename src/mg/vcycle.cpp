@@ -42,23 +42,25 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
     throw std::invalid_argument("gs_smooth: rho shape mismatch");
 
   const int N = static_cast<int>(V.rows());
-  const Eigen::MatrixXd Vc = diag_fv(N);
+  const Eigen::MatrixXd Vc_inv = diag_fv(N).cwiseInverse();
   const double h2 = h * h;
 
-  Eigen::MatrixXd V_gs(N, N);
-  Eigen::MatrixXd nsum(N, N);
+  // True in-place red-black Gauss-Seidel: sweep one color, using the most
+  // recently updated values of the other color (no scratch buffer, half the
+  // work compared to computing the full V_gs and discarding one color).
+  // Boundary cells have 3 or 2 neighbours — handled with explicit bounds
+  // checks; the branch predictor handles them well because the pattern is
+  // the same for every inner iteration.
   for (int it = 0; it < n_iter; ++it) {
     for (int color = 0; color < 2; ++color) {
-      nsum.setZero();
-      nsum.bottomRows(N - 1)     += V.topRows(N - 1);
-      nsum.topRows(N - 1)        += V.bottomRows(N - 1);
-      nsum.rightCols(N - 1)      += V.leftCols(N - 1);
-      nsum.leftCols(N - 1)       += V.rightCols(N - 1);
-      V_gs.array() = (nsum.array() + h2 * rho.array()) / Vc.array();
       for (int j = 0; j < N; ++j) {
-        const int istart = (j & 1) == color ? 0 : 1;
-        for (int i = istart; i < N; i += 2) {
-          V(i, j) = V_gs(i, j);
+        for (int i = (j + color) & 1; i < N; i += 2) {
+          double s = 0.0;
+          if (i > 0)     s += V(i - 1, j);
+          if (i < N - 1) s += V(i + 1, j);
+          if (j > 0)     s += V(i, j - 1);
+          if (j < N - 1) s += V(i, j + 1);
+          V(i, j) = (s + h2 * rho(i, j)) * Vc_inv(i, j);
         }
       }
     }

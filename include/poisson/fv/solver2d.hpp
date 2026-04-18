@@ -68,6 +68,7 @@ class Solver2D {
   /// include the Dirichlet ghost-cell contribution (Vw(0,:) = 2 eps(0,:)/dx²
   /// and Ve(Nx-1,:) = 2 eps(Nx-1,:)/dx²).
   Eigen::MatrixXd Ve_, Vw_, Vn_, Vs_, Vc_;
+  Eigen::MatrixXd Vc_inv_;   ///< 1/Vc_, precomputed to avoid hot-loop divisions
 };
 
 }  // namespace poisson::fv
