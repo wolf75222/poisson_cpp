@@ -167,6 +167,95 @@ int run_spectral2d(int N, const std::string& output) {
 #endif
 }
 
+// Multi-charge scatter: a deterministic set of N_charges Gaussian sources
+// scattered across the grounded unit box. Used as the hero banner — AMR
+// refinement appears around every charge individually, producing the
+// canonical "multi-scale" look advertised on the README.
+int run_amr_scatter(int level_min, int level_max, double sigma,
+                    const std::string& output) {
+  // Fixed charge positions so the banner is reproducible. Includes a
+  // tight cluster (top-left), a larger cluster (right), and isolated
+  // singles — mimicking a plasma filament scene.
+  // Alternating-sign charges so their V tails cancel at distance — each
+  // charge keeps a localised signed halo instead of fusing into one big
+  // dome. Visualisation uses |V| so both +q and -q show up as dark
+  // "caves" against the bright V≈0 background.
+  struct Charge { double x, y, q, s; };
+  const std::vector<Charge> charges = {
+      {0.10, 0.25, +1.0, sigma},
+      {0.14, 0.80, -1.0, sigma * 1.1},
+      {0.32, 0.50, +1.0, sigma},
+      {0.45, 0.22, -1.0, sigma * 0.9},
+      {0.48, 0.82, +1.0, sigma},
+      {0.65, 0.42, -1.0, sigma * 1.1},
+      {0.70, 0.78, +1.0, sigma},
+      {0.85, 0.25, -1.0, sigma * 1.0},
+      {0.89, 0.62, +1.0, sigma * 1.15},
+      {0.94, 0.70, -1.0, sigma * 0.9},
+  };
+
+  poisson::amr::Quadtree tree(1.0, level_min);
+  auto predicate = [&](poisson::amr::CellKey k) {
+    const uint8_t lv = poisson::amr::level_of(k);
+    if (lv >= level_max) return false;
+    const uint32_t i = poisson::amr::i_of(k);
+    const uint32_t j = poisson::amr::j_of(k);
+    const double h = 1.0 / (1u << lv);
+    const double x = (i + 0.5) * h, y = (j + 0.5) * h;
+    for (const auto& c : charges) {
+      const double dx = x - c.x, dy = y - c.y;
+      if (dx * dx + dy * dy < 16.0 * c.s * c.s && h > 0.3 * c.s) return true;
+    }
+    return false;
+  };
+  auto rho_fn = [&](double x, double y) {
+    double r = 0.0;
+    for (const auto& c : charges) {
+      const double dx = x - c.x, dy = y - c.y;
+      r += c.q * std::exp(-(dx * dx + dy * dy) / (c.s * c.s));
+    }
+    return r;
+  };
+  tree.build(predicate, static_cast<uint8_t>(level_max), rho_fn);
+
+  auto arr = poisson::amr::extract_arrays(tree);
+  const auto rep = poisson::amr::sor(
+      arr, {.omega = 1.85, .tol = 1e-7, .max_iter = 20'000, .eps0 = 1.0});
+
+  std::cout << "# amr_scatter  N_charges=" << charges.size()
+            << "  N_leaves=" << tree.num_leaves()
+            << "  iter=" << rep.iterations
+            << "  residual=" << rep.residual << '\n'
+            << "# V min/max = " << arr.V.minCoeff() << " / "
+            << arr.V.maxCoeff() << '\n';
+
+  if (!output.empty()) {
+    nlohmann::json cells = nlohmann::json::array();
+    for (Eigen::Index n = 0; n < arr.V.size(); ++n) {
+      const poisson::amr::CellKey key = arr.keys[static_cast<std::size_t>(n)];
+      const auto [x, y] = tree.cell_center(key);
+      const double h = arr.h(n);
+      const int lv = poisson::amr::level_of(key);
+      cells.push_back({
+          {"x", x}, {"y", y}, {"h", h}, {"level", lv},
+          {"V", arr.V(n)}, {"rho", arr.rho(n)}});
+    }
+    nlohmann::json charges_j = nlohmann::json::array();
+    for (const auto& c : charges) {
+      charges_j.push_back({{"x", c.x}, {"y", c.y}, {"q", c.q}, {"s", c.s}});
+    }
+    nlohmann::json j = {
+        {"problem", "amr_scatter"},
+        {"level_min", level_min}, {"level_max", level_max},
+        {"n_leaves", static_cast<int>(tree.num_leaves())},
+        {"iterations", rep.iterations}, {"residual", rep.residual},
+        {"charges", charges_j},
+        {"cells", cells}};
+    dump_json(output, j);
+  }
+  return 0;
+}
+
 // Dipole configuration: +q at (0.35, 0.5), -q at (0.65, 0.5) in a grounded
 // unit box. Produces a canonical +/- lobe pattern, good for visualisation.
 int run_amr_dipole(int level_min, int level_max, double sigma,
@@ -332,6 +421,8 @@ int main(int argc, char** argv) {
                                                output);
   if (problem == "amr_dipole") return run_amr_dipole(level_min, level_max,
                                                      sigma, output);
+  if (problem == "amr_scatter") return run_amr_scatter(level_min, level_max,
+                                                       sigma, output);
   std::cerr << "Unknown problem: " << problem << '\n';
   print_usage();
   return 2;

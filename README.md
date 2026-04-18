@@ -2,9 +2,11 @@
 
 ![banner](docs/figures/banner.png)
 
-*Dipôle gaussien (charges ±1 à σ = 0.03) résolu par le solveur AMR :
-1 756 feuilles quadtree, SOR convergé à 10⁻⁸ en 204 itérations, V ≈ ±1.1×10⁻³.
-Script : [`python/make_banner.py`](python/make_banner.py).*
+*Scène multi-charges (10 gaussiennes ±q, σ = 0.025) dans une boîte à la terre.
+Résolue par le solveur AMR : **5 287 feuilles** quadtree avec raffinement
+local autour de chaque charge, SOR convergé à 10⁻⁸ en 138 itérations.
+Fond = |V|, lignes = équipotentielles, maillage = cellules AMR, points
+rouges = charges. Commandes dans [`python/make_banner.py`](python/make_banner.py).*
 
 ---
 
