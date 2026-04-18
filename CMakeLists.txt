@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -37,16 +38,39 @@ if(NOT TARGET Eigen3::Eigen)
     $<BUILD_INTERFACE:${eigen_headers_SOURCE_DIR}>)
 endif()
 
+# FFTW3 (GPL) for the spectral solvers. Optional: the rest of the library
+# builds without it.
+find_package(FFTW3 MODULE)
+if(FFTW3_FOUND)
+  set(POISSON_HAVE_FFTW3 ON)
+  message(STATUS "FFTW3 found: ${FFTW3_LIBRARY}")
+else()
+  set(POISSON_HAVE_FFTW3 OFF)
+  message(STATUS "FFTW3 not found; spectral solvers will be disabled")
+endif()
+
 # -----------------------------------------------------------------------------
 # Library target (header-only + compiled .cpp)
 # -----------------------------------------------------------------------------
-add_library(poisson
+set(POISSON_SOURCES
   src/linalg/thomas.cpp
   src/fv/solver1d.cpp
   src/fv/dielectric.cpp
-  src/fv/solver2d.cpp
-)
+  src/fv/solver2d.cpp)
+
+if(POISSON_HAVE_FFTW3)
+  list(APPEND POISSON_SOURCES
+    src/spectral/dst1d.cpp
+    src/spectral/dst2d.cpp)
+endif()
+
+add_library(poisson ${POISSON_SOURCES})
 add_library(poisson::poisson ALIAS poisson)
+
+if(POISSON_HAVE_FFTW3)
+  target_link_libraries(poisson PUBLIC FFTW3::fftw3)
+  target_compile_definitions(poisson PUBLIC POISSON_HAVE_FFTW3=1)
+endif()
 
 target_include_directories(poisson
   PUBLIC
