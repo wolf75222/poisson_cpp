@@ -94,6 +94,7 @@ set(POISSON_SOURCES
   src/fv/solver2d.cpp
   src/amr/quadtree.cpp
   src/amr/solver.cpp
+  src/iter/poisson_cg.cpp
   src/mg/vcycle.cpp)
 
 if(POISSON_HAVE_FFTW3)

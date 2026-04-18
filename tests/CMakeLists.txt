@@ -19,7 +19,8 @@ set(TEST_SOURCES
   test_prolongate.cpp
   test_reference.cpp
   test_invariants.cpp
-  test_conservation.cpp)
+  test_conservation.cpp
+  test_cg.cpp)
 
 if(POISSON_HAVE_FFTW3)
   list(APPEND TEST_SOURCES test_dst1d.cpp test_dst2d.cpp test_benchmark.cpp)

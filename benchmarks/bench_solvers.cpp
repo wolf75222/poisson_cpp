@@ -19,6 +19,7 @@
 #include "poisson/amr/solver.hpp"
 #include "poisson/core/grid.hpp"
 #include "poisson/fv/solver2d.hpp"
+#include "poisson/iter/poisson_cg.hpp"
 #include "poisson/linalg/thomas.hpp"
 #include "poisson/mg/vcycle.hpp"
 
@@ -85,6 +86,25 @@ int main(int argc, char** argv) {
         },
         repeats);
     std::cout << "sor2d       N=" << N << "x" << N << "  " << ms << " ms"
+              << "  (" << last.iterations << " iter)\n";
+  }
+
+  // CG / PCG on the same problem (Poisson 2D, uR=1 ramp).
+  {
+    poisson::Grid2D grid(1.0, 1.0, N, N);
+    Eigen::MatrixXd V   = Eigen::MatrixXd::Zero(N, N);
+    Eigen::MatrixXd rho = Eigen::MatrixXd::Zero(N, N);
+    poisson::iter::CGReport last{};
+    const double ms = bench(
+        [&] {
+          V.setZero();
+          last = poisson::iter::solve_poisson_cg(
+              V, rho, grid, 1.0, 0.0, 1.0,
+              {.tol = 1e-8, .max_iter = 10'000},
+              /*use_preconditioner=*/false);
+        },
+        repeats);
+    std::cout << "cg2d        N=" << N << "x" << N << "  " << ms << " ms"
               << "  (" << last.iterations << " iter)\n";
   }
 

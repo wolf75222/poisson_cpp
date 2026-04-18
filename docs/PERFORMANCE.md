@@ -152,6 +152,55 @@ energy identity, polynomial exactness), pass under both
 - `amr_sor`     — `amr::sor`, 200 sweeps on a Gaussian-refined tree
                    (base 16×16, up to level 6, ≈ 640 leaves)
 
+## Conjugate Gradient: new iterative method
+
+Added after an algorithm review of `CourseOnPoisson/Notes/poisson_equation.pdf`
+§4.7 (iterative methods). The discrete 2D Poisson operator is symmetric
+positive-definite for our Dirichlet/Neumann BCs, so Conjugate Gradient
+is applicable and converges in `O(sqrt(kappa))` ≈ `O(N)` iterations
+vs `O(N²)` for SOR with optimal omega.
+
+Implementation (`include/poisson/iter/cg.hpp`, matrix-free, templated):
+  - `cg(apply, x, b, params)`: classical unpreconditioned CG
+  - `pcg(apply, precond, x, b, params)`: preconditioned CG with a
+    user-supplied `M⁻¹` action
+  - `solve_poisson_cg(...)`: high-level wrapper for the FV Dirichlet/
+    Neumann Poisson problem, with optional Jacobi preconditioner
+    (`diag(A)⁻¹`)
+
+Measured on Apple M-series, tol = 1e-8, linear ramp problem:
+
+| N    | SOR (ms / iter)    | CG (ms / iter)   | CG speedup |
+|------|--------------------|------------------|------------|
+| 128² | 33.1 ms / 965 iter | 7.8 ms / 183 iter | **4.2×** |
+| 256² | 304 ms / 1837 iter | 63 ms / 368 iter  | **4.8×** |
+| 512² | 2515 ms / 3483 iter | 639 ms / 734 iter | **3.9×** |
+
+Iteration counts scale as ~N for CG (183, 368, 734 — factor 2 per
+doubling of N) vs ~N² for SOR (965, 1837, 3483 — factor 2 also but
+from a much higher baseline because each SOR iteration only
+propagates information one cell).
+
+### When to choose which solver
+
+| Problem | Best choice | Why |
+|---|---|---|
+| Uniform coefficients + Dirichlet homogeneous | **DSTSolver2D** | O(N² log N) total, no iterations |
+| Mixed Dirichlet/Neumann, uniform ε | **CG** | O(sqrt(κ)·N²), SPD system |
+| Variable ε, needs cheap iteration | **PCG (Jacobi)** | Preconditioner helps when diag varies |
+| Complex BCs, need SOR features (ω auto) | **Solver2D SOR** | Matches existing Python workflows |
+
+### Jacobi preconditioner caveat
+
+On the uniform-ε problems the library currently benchmarks, Jacobi
+preconditioning *slightly hurts* CG (PCG ~ 442 iter vs CG ~ 187 iter
+at N=128, tol=1e-10): the FV stencil diagonal is near-constant in the
+interior, so diagonal scaling mostly commutes with the operator and
+redirects the CG search away from the optimal Krylov subspace. PCG
+becomes useful for problems with **strongly varying permittivity** or
+**highly anisotropic grids**, where `diag(A)⁻¹` captures the
+leading-order ill-conditioning.
+
 ## Non-applied optimisations
 
 The following were evaluated via the CS:APP measure → transform →

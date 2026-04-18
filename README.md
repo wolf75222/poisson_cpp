@@ -37,6 +37,7 @@ TP-style figures and interpretation of the solver outputs.
 | `poisson::linalg::thomas` | Tridiagonal solver, O(N) |
 | `poisson::fv::Solver1D` / `solve_poisson_1d` | 1D FV with variable ε |
 | `poisson::fv::Solver2D` | 2D FV, SOR red-black, Dirichlet×Neumann |
+| `poisson::iter::cg` / `pcg` / `solve_poisson_cg` | Conjugate Gradient (Krylov), matrix-free, optional Jacobi precond |
 | `poisson::spectral::DSTSolver1D` / `DSTSolver2D` | Spectral, FFTW DST-I |
 | `poisson::amr::Quadtree` / `AMRArrays` | Quadtree on Morton keys |
 | `poisson::amr::sor` | SOR on unstructured AMR leaves |
