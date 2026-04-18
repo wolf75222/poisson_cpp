@@ -55,6 +55,31 @@ TEST_CASE("Quadtree: build + balance_2to1 maintains 2:1 invariant",
   }
 }
 
+TEST_CASE("Quadtree::balance_2to1 is idempotent", "[amr][quadtree]") {
+  Quadtree tree(1.0, 3);
+  auto predicate = [](CellKey k) {
+    const uint32_t i = i_of(k), j = j_of(k);
+    const uint8_t lv = level_of(k);
+    const double h = 1.0 / (1u << lv);
+    const double x = (i + 0.5) * h, y = (j + 0.5) * h;
+    return (x < 0.2 && y < 0.2) && lv < 6;
+  };
+  auto rho = [](double, double) { return 0.0; };
+  tree.build(predicate, 6, rho);
+
+  const std::size_t n1 = tree.num_leaves();
+  // Collect the exact leaf set after the first balance.
+  std::set<CellKey> leaves_after_first;
+  for (const auto& [key, _] : tree.leaves()) leaves_after_first.insert(key);
+
+  // Re-running the balance on an already-balanced tree must be a no-op.
+  tree.balance_2to1();
+  REQUIRE(tree.num_leaves() == n1);
+  std::set<CellKey> leaves_after_second;
+  for (const auto& [key, _] : tree.leaves()) leaves_after_second.insert(key);
+  REQUIRE(leaves_after_first == leaves_after_second);
+}
+
 TEST_CASE("Quadtree::neighbour_leaves covers all 3 cases", "[amr][quadtree]") {
   Quadtree tree(1.0, 2);
   // Refine cell (2, 0, 0) only. Its east neighbour (2, 1, 0) stays same-level.

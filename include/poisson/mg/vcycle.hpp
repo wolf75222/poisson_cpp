@@ -24,6 +24,11 @@ Eigen::MatrixXd restrict_avg(Eigen::Ref<const Eigen::MatrixXd> r);
 /// Piecewise-constant prolongation (order 0): (N/2, N/2) -> (N, N).
 Eigen::MatrixXd prolongate_const(Eigen::Ref<const Eigen::MatrixXd> c);
 
+/// Bilinear prolongation (order 2): (M, M) -> (2M, 2M), for cell-centered FV.
+/// Each fine cell gets a weighted combination of the enclosing coarse cell
+/// and its two neighbours in the direction of the fine cell's offset.
+Eigen::MatrixXd prolongate_bilinear(Eigen::Ref<const Eigen::MatrixXd> c);
+
 /// Recursive V-cycle multigrid on a uniform grid. Returns the updated V.
 ///
 /// Coarsens by factor 2 down to size <= n_min; smoothes more aggressively at

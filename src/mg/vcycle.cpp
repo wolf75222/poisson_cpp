@@ -45,13 +45,20 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
   const Eigen::MatrixXd Vc = diag_fv(N);
   const double h2 = h * h;
 
+  Eigen::MatrixXd V_gs(N, N);
+  Eigen::MatrixXd nsum(N, N);
   for (int it = 0; it < n_iter; ++it) {
     for (int color = 0; color < 2; ++color) {
-      const Eigen::MatrixXd V_gs =
-          (neighbour_sum(V).array() + h2 * rho.array()) / Vc.array();
+      nsum.setZero();
+      nsum.bottomRows(N - 1)     += V.topRows(N - 1);
+      nsum.topRows(N - 1)        += V.bottomRows(N - 1);
+      nsum.rightCols(N - 1)      += V.leftCols(N - 1);
+      nsum.leftCols(N - 1)       += V.rightCols(N - 1);
+      V_gs.array() = (nsum.array() + h2 * rho.array()) / Vc.array();
       for (int j = 0; j < N; ++j) {
-        for (int i = 0; i < N; ++i) {
-          if (((i + j) & 1) == color) V(i, j) = V_gs(i, j);
+        const int istart = (j & 1) == color ? 0 : 1;
+        for (int i = istart; i < N; i += 2) {
+          V(i, j) = V_gs(i, j);
         }
       }
     }
@@ -96,6 +103,37 @@ Eigen::MatrixXd prolongate_const(Eigen::Ref<const Eigen::MatrixXd> c) {
   return f;
 }
 
+Eigen::MatrixXd prolongate_bilinear(Eigen::Ref<const Eigen::MatrixXd> c) {
+  // Cell-centered convention: coarse cell (I, J) occupies the square
+  // [I*2h, (I+1)*2h] and its center is at ((I+0.5)*2h, (J+0.5)*2h).
+  // Fine cell (i, j) has center ((i+0.5)*h, (j+0.5)*h). The enclosing coarse
+  // cell has (I, J) = (i/2, j/2), and the fine cell's offset inside it is
+  // (i%2, j%2). A standard bilinear interpolation between the four coarse
+  // cells around the fine center uses weights (9/16, 3/16, 3/16, 1/16).
+  const Eigen::Index M = c.rows();
+  const Eigen::Index N = 2 * M;
+  auto at = [&](Eigen::Index I, Eigen::Index J) -> double {
+    // Homogeneous Dirichlet 0 ghost for out-of-range coarse indices.
+    if (I < 0 || I >= M || J < 0 || J >= M) return 0.0;
+    return c(I, J);
+  };
+  Eigen::MatrixXd f(N, N);
+  for (Eigen::Index j = 0; j < N; ++j) {
+    const Eigen::Index J = j / 2;
+    const Eigen::Index dJ = (j % 2 == 0) ? -1 : +1;
+    for (Eigen::Index i = 0; i < N; ++i) {
+      const Eigen::Index I = i / 2;
+      const Eigen::Index dI = (i % 2 == 0) ? -1 : +1;
+      f(i, j) =
+          9.0 / 16.0 * at(I,      J)
+        + 3.0 / 16.0 * at(I + dI, J)
+        + 3.0 / 16.0 * at(I,      J + dJ)
+        + 1.0 / 16.0 * at(I + dI, J + dJ);
+    }
+  }
+  return f;
+}
+
 Eigen::MatrixXd vcycle_uniform(Eigen::MatrixXd V,
                                const Eigen::MatrixXd& rho,
                                double h,
@@ -112,7 +150,7 @@ Eigen::MatrixXd vcycle_uniform(Eigen::MatrixXd V,
   Eigen::MatrixXd delta_c = Eigen::MatrixXd::Zero(r_c.rows(), r_c.cols());
   delta_c = vcycle_uniform(std::move(delta_c), r_c, 2.0 * h,
                             n_pre, n_post, n_min);
-  V += prolongate_const(delta_c);
+  V += prolongate_bilinear(delta_c);
   gs_smooth(V, rho, h, n_post);
   return V;
 }
@@ -132,8 +170,8 @@ void vcycle_amr_composite(amr::AMRArrays& a,
   const int N_c = 1 << level_min;
   const double h_c = tree.L() / static_cast<double>(N_c);
   Eigen::MatrixXd r_c = Eigen::MatrixXd::Zero(N_c, N_c);
-  for (std::size_t n = 0; n < a.keys.size(); ++n) {
-    const amr::CellKey key = a.keys[n];
+  for (Eigen::Index n = 0; n < static_cast<Eigen::Index>(a.keys.size()); ++n) {
+    const amr::CellKey key = a.keys[static_cast<std::size_t>(n)];
     const uint8_t lv = amr::level_of(key);
     const uint32_t i = amr::i_of(key), j = amr::j_of(key);
     const int shift = static_cast<int>(lv) - level_min;
@@ -158,8 +196,8 @@ void vcycle_amr_composite(amr::AMRArrays& a,
     if (ii < 0 || ii >= N_c || jj < 0 || jj >= N_c) return 0.0;
     return delta_c(ii, jj);
   };
-  for (std::size_t n = 0; n < a.keys.size(); ++n) {
-    const amr::CellKey key = a.keys[n];
+  for (Eigen::Index n = 0; n < static_cast<Eigen::Index>(a.keys.size()); ++n) {
+    const amr::CellKey key = a.keys[static_cast<std::size_t>(n)];
     const auto [x, y] = tree.cell_center(key);
     const double u = x / h_c - 0.5;
     const double v = y / h_c - 0.5;

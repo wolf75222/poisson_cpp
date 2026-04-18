@@ -23,8 +23,7 @@ Eigen::VectorXd discrete_eigenvalues(int N, double L) {
 }  // namespace
 
 DSTSolver2D::DSTSolver2D(int Nx, int Ny, double Lx, double Ly, double eps0)
-    : Nx_(Nx), Ny_(Ny), Lx_(Lx), Ly_(Ly), eps0_(eps0),
-      in_(Nx, Ny), out_(Nx, Ny) {
+    : Nx_(Nx), Ny_(Ny), in_(Nx, Ny), out_(Nx, Ny) {
   if (Nx < 2 || Ny < 2) throw std::invalid_argument("DSTSolver2D: Nx,Ny >= 2");
   if (!(Lx > 0.0 && Ly > 0.0))
     throw std::invalid_argument("DSTSolver2D: Lx, Ly must be > 0");

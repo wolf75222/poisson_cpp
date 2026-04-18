@@ -57,6 +57,44 @@ TEST_CASE("Solver2D: symmetric in y under y-independent source", "[fv][2d]") {
   }
 }
 
+TEST_CASE("Solver2D: inhomogeneous eps preserves D across y-independent layers",
+          "[fv][2d]") {
+  // Layered eps along x (like the 1D dielectric test), rho = 0. With Dirichlet
+  // uL,uR in x and Neumann in y, V depends on x only and eps_face * dV/dx is
+  // the same (D-field continuity).
+  const int N = 32;
+  Grid2D grid(1.0, 1.0, N, N);
+
+  Eigen::MatrixXd eps = Eigen::MatrixXd::Ones(N, N);
+  eps.topRows(5).setConstant(4.0);
+  eps.bottomRows(5).setConstant(4.0);
+
+  Solver2D solver(grid, eps, /*uL=*/0.0, /*uR=*/10.0);
+  Eigen::MatrixXd V = Eigen::MatrixXd::Zero(N, N);
+  Eigen::MatrixXd rho = Eigen::MatrixXd::Zero(N, N);
+  const auto report = solver.solve(V, rho, {.tol = 1e-11, .max_iter = 50'000});
+  REQUIRE(report.residual < 1e-11);
+
+  // V must be y-independent.
+  for (int i = 0; i < N; ++i) {
+    for (int j = 1; j < N; ++j) {
+      REQUIRE(std::abs(V(i, j) - V(i, 0)) < 1e-6);
+    }
+  }
+
+  // D = eps_face * (V_{i+1} - V_i)/dx must be constant along x (Neumann in y
+  // removes transverse flow, so the x-flux is conserved).
+  const double dx = grid.dx();
+  Eigen::VectorXd D(N - 1);
+  for (int i = 0; i < N - 1; ++i) {
+    const double eps_face = 2.0 * eps(i, 0) * eps(i + 1, 0) /
+                            (eps(i, 0) + eps(i + 1, 0));
+    D(i) = eps_face * (V(i + 1, 0) - V(i, 0)) / dx;
+  }
+  const double rel = (D.maxCoeff() - D.minCoeff()) / std::abs(D.mean());
+  REQUIRE(rel < 1e-8);
+}
+
 TEST_CASE("Solver2D: auto omega converges", "[fv][2d]") {
   const int N = 16;
   Grid2D grid(1.0, 1.0, N, N);

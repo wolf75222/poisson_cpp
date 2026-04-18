@@ -66,3 +66,20 @@ TEST_CASE("thomas rejects mismatched sizes", "[thomas]") {
   a.setZero(); b.setOnes(); c.setZero(); d.setOnes();
   REQUIRE_THROWS_AS(thomas(a, b, c, d), std::invalid_argument);
 }
+
+TEST_CASE("thomas detects a zero first pivot", "[thomas]") {
+  Eigen::VectorXd a(3); a << 0.0, 1.0, 1.0;
+  Eigen::VectorXd b(3); b << 0.0, 4.0, 4.0;   // b(0) = 0 → singular
+  Eigen::VectorXd c(3); c << 1.0, 1.0, 0.0;
+  Eigen::VectorXd d(3); d << 1.0, 1.0, 1.0;
+  REQUIRE_THROWS_AS(thomas(a, b, c, d), std::runtime_error);
+}
+
+TEST_CASE("thomas detects a zero interior pivot", "[thomas]") {
+  // b(1) - a(1)*cp(0) = 1 - 1*(1/1) = 0
+  Eigen::VectorXd a(3); a << 0.0, 1.0, 1.0;
+  Eigen::VectorXd b(3); b << 1.0, 1.0, 4.0;
+  Eigen::VectorXd c(3); c << 1.0, 1.0, 0.0;
+  Eigen::VectorXd d(3); d << 1.0, 1.0, 1.0;
+  REQUIRE_THROWS_AS(thomas(a, b, c, d), std::runtime_error);
+}

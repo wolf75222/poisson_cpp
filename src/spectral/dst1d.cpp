@@ -7,7 +7,7 @@
 namespace poisson::spectral {
 
 DSTSolver1D::DSTSolver1D(int N, double L, double eps0)
-    : N_(N), L_(L), eps0_(eps0), in_(N), out_(N) {
+    : N_(N), L_(L), in_(N), out_(N) {
   if (N < 2) throw std::invalid_argument("DSTSolver1D: N must be >= 2");
   if (!(L > 0.0)) throw std::invalid_argument("DSTSolver1D: L must be > 0");
   if (!(eps0 > 0.0)) throw std::invalid_argument("DSTSolver1D: eps0 must be > 0");

@@ -31,6 +31,31 @@ TEST_CASE("Uniform V-cycle converges on a Gaussian source", "[mg][uniform]") {
   REQUIRE(r_prev < 1e-5);
 }
 
+TEST_CASE("Composite V-cycle on an unrefined AMR tree (1-level edge case)",
+          "[mg][amr]") {
+  // When no cell is refined, the AMR mesh is just a uniform grid at level_min.
+  // The composite V-cycle must still converge, reducing to essentially a
+  // uniform solve. This exercises the shift = 0 branch in the restriction.
+  amr::Quadtree tree(1.0, 3);   // uniform 8x8, no refinement
+  const double hcoarse = tree.cell_size(3);
+  for (auto& [key, cell] : tree.leaves()) {
+    const auto [x, y] = tree.cell_center(key);
+    const double r2 = (x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5);
+    cell.rho = std::exp(-r2 / 0.02);
+    (void)hcoarse;
+  }
+  auto arr = amr::extract_arrays(tree);
+  const double r0 = amr::residual(arr).cwiseAbs().maxCoeff();
+  mg::CompositeParams p{.n_pre = 3, .n_post = 3, .n_coarse_cycles = 3,
+                         .omega = 1.85, .eps0 = 1.0};
+  for (int k = 0; k < 5; ++k) {
+    mg::vcycle_amr_composite(arr, tree, p);
+  }
+  const double r1 = amr::residual(arr).cwiseAbs().maxCoeff();
+  REQUIRE(r1 < r0);
+  REQUIRE(r1 < 0.1 * r0);
+}
+
 TEST_CASE("Composite V-cycle reduces the AMR residual", "[mg][amr]") {
   // Build a refined AMR tree around a Gaussian.
   amr::Quadtree tree(1.0, 3);

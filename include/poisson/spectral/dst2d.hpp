@@ -30,8 +30,6 @@ class DSTSolver2D {
 
  private:
   int Nx_, Ny_;
-  double Lx_, Ly_;
-  double eps0_;
   mutable Eigen::MatrixXd in_, out_;   // column-major Eigen => FFTW ordering
   Eigen::MatrixXd lam_inv_;
   FFTWPlan plan_fwd_;

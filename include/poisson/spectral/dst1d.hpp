@@ -34,7 +34,6 @@ class DSTSolver1D {
  private:
   int N_;
   double L_;
-  double eps0_;
   // Scratch buffers (fftw_plan requires owning arrays that outlive the plan).
   mutable Eigen::VectorXd in_, out_;
   Eigen::VectorXd lam_inv_;   // 1 / (eps0 * lambda_k), precomputed

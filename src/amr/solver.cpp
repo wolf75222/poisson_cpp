@@ -16,7 +16,7 @@ constexpr std::array<Direction, 4> kDirections = {
 
 AMRArrays extract_arrays(const Quadtree& tree) {
   const auto& leaves_map = tree.leaves();
-  const std::size_t N = leaves_map.size();
+  const Eigen::Index N = static_cast<Eigen::Index>(leaves_map.size());
 
   AMRArrays a;
   a.keys.reserve(N);
@@ -30,8 +30,8 @@ AMRArrays extract_arrays(const Quadtree& tree) {
   a.w1 = Eigen::Matrix<double, Eigen::Dynamic, 4>::Zero(N, 4);
 
   std::unordered_map<CellKey, int64_t> key_to_idx;
-  key_to_idx.reserve(N);
-  std::size_t n = 0;
+  key_to_idx.reserve(static_cast<std::size_t>(N));
+  Eigen::Index n = 0;
   for (const auto& [key, cell] : leaves_map) {
     a.keys.push_back(key);
     a.V(n) = cell.V;
@@ -41,8 +41,8 @@ AMRArrays extract_arrays(const Quadtree& tree) {
     ++n;
   }
 
-  for (std::size_t i = 0; i < N; ++i) {
-    const CellKey key = a.keys[i];
+  for (Eigen::Index i = 0; i < N; ++i) {
+    const CellKey key = a.keys[static_cast<std::size_t>(i)];
     const uint8_t lv = level_of(key);
     for (int d = 0; d < 4; ++d) {
       const auto neighs = tree.neighbour_leaves(key, kDirections[d]);
@@ -80,12 +80,12 @@ void writeback(Quadtree& tree,
     throw std::invalid_argument("writeback: V size must match keys");
   }
   for (std::size_t i = 0; i < keys.size(); ++i) {
-    tree.at(keys[i]).V = V(i);
+    tree.at(keys[i]).V = V(static_cast<Eigen::Index>(i));
   }
 }
 
 SORReport sor(AMRArrays& a, SORParams p) {
-  const std::size_t N = a.keys.size();
+  const Eigen::Index N = static_cast<Eigen::Index>(a.keys.size());
   if (!(p.eps0 > 0.0)) throw std::invalid_argument("sor: eps0 must be > 0");
   if (!(p.omega > 0.0 && p.omega < 2.0))
     throw std::invalid_argument("sor: omega must be in (0, 2)");
@@ -94,7 +94,7 @@ SORReport sor(AMRArrays& a, SORParams p) {
   int iter = 0;
   for (iter = 0; iter < p.max_iter; ++iter) {
     max_diff = 0.0;
-    for (std::size_t i = 0; i < N; ++i) {
+    for (Eigen::Index i = 0; i < N; ++i) {
       double s = 0.0;
       for (int d = 0; d < 4; ++d) {
         const int64_t n0 = a.nb0(i, d);
@@ -117,9 +117,9 @@ SORReport sor(AMRArrays& a, SORParams p) {
 }
 
 Eigen::VectorXd residual(const AMRArrays& a, double eps0) {
-  const std::size_t N = a.keys.size();
+  const Eigen::Index N = static_cast<Eigen::Index>(a.keys.size());
   Eigen::VectorXd r(N);
-  for (std::size_t i = 0; i < N; ++i) {
+  for (Eigen::Index i = 0; i < N; ++i) {
     double s = 0.0;
     for (int d = 0; d < 4; ++d) {
       const int64_t n0 = a.nb0(i, d);

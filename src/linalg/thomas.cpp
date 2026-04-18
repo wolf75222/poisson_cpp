@@ -18,11 +18,16 @@ Eigen::VectorXd thomas(Eigen::Ref<const Eigen::VectorXd> a,
   Eigen::VectorXd dp(N);   // modified right-hand side
   Eigen::VectorXd x(N);
 
-  // Forward sweep.
+  // Forward sweep. Detect singular matrices (zero pivots) rather than
+  // silently propagating NaN/inf.
+  if (b(0) == 0.0) throw std::runtime_error("thomas: singular matrix (b(0) = 0)");
   cp(0) = c(0) / b(0);
   dp(0) = d(0) / b(0);
   for (Eigen::Index i = 1; i < N; ++i) {
     const double denom = b(i) - a(i) * cp(i - 1);
+    if (denom == 0.0) {
+      throw std::runtime_error("thomas: singular matrix (zero pivot)");
+    }
     cp(i) = (i < N - 1) ? c(i) / denom : 0.0;
     dp(i) = (d(i) - a(i) * dp(i - 1)) / denom;
   }

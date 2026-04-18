@@ -16,6 +16,7 @@ set(TEST_SOURCES
   test_quadtree.cpp
   test_amr_solver.cpp
   test_vcycle.cpp
+  test_prolongate.cpp
   test_reference.cpp)
 
 if(POISSON_HAVE_FFTW3)
