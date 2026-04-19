@@ -114,7 +114,7 @@ RuntimeError
 Finite-volume 1D Poisson with Dirichlet BC, uniform permittivity.
 
 Solves ``-V''(x) = rho(x) / eps0`` on a node-centered grid with
-``V(0) = uL`` and ``V(L) = uR``. Internally calls the Thomas algorithm.
+``V(0) = uL`` and ``V(L) = uR``.
 
 Parameters
 ----------
@@ -140,12 +140,12 @@ numpy.ndarray of shape (N,)
       .def_readwrite("tol",      &poisson::fv::SORParams::tol,
                      "Stopping criterion on the max-norm of the residual.")
       .def_readwrite("max_iter", &poisson::fv::SORParams::max_iter,
-                     "Hard iteration cap.");
+                     "Iteration cap.");
 
   py::class_<poisson::fv::SORReport>(m, "SORReport",
                                      "Result of an SOR run.")
       .def_readonly("iterations", &poisson::fv::SORReport::iterations,
-                    "Number of sweeps actually performed.")
+                    "Number of sweeps performed.")
       .def_readonly("residual",   &poisson::fv::SORReport::residual,
                     "Final ``||V_new - V_old||_inf``.")
       .def("__repr__", [](const poisson::fv::SORReport& r) {
@@ -194,7 +194,7 @@ Parameters
 rho : numpy.ndarray of shape (Nx, Ny)
     Charge density per cell.
 omega : float, optional
-    Relaxation factor. Default ``-1`` triggers
+    Relaxation factor. Default ``-1`` selects
     ``omega_opt = 2 / (1 + sin(pi/N))``.
 tol : float, optional
     Convergence threshold on max-norm residual. Default ``1e-8``.
@@ -219,7 +219,7 @@ report : SORReport
            py::arg("omega") = -1.0, py::arg("tol") = 1e-8,
            py::arg("max_iter") = 20'000,
            R"doc(
-In-place variant of :meth:`solve` that reuses the caller's ``V``.
+In-place variant of :meth:`solve`.
 
 ``V`` and ``rho`` must be Fortran-ordered numpy arrays (``order='F'``)
 matching Eigen's column-major layout, otherwise pybind11 will copy them.
@@ -248,12 +248,12 @@ SORReport
                      "Stopping criterion on the relative residual "
                      "``||r|| / ||b||``.")
       .def_readwrite("max_iter", &poisson::iter::CGParams::max_iter,
-                     "Hard iteration cap.");
+                     "Iteration cap.");
 
   py::class_<poisson::iter::CGReport>(m, "CGReport",
                                       "Result of a CG / PCG run.")
       .def_readonly("iterations", &poisson::iter::CGReport::iterations,
-                    "Number of CG iterations actually performed.")
+                    "Number of CG iterations performed.")
       .def_readonly("residual",   &poisson::iter::CGReport::residual,
                     "Final ``||r|| / ||b||``.")
       .def("__repr__", [](const poisson::iter::CGReport& r) {
@@ -323,8 +323,8 @@ history : list of float
   py::class_<poisson::spectral::DSTSolver1D>(m, "DSTSolver1D", R"doc(
 Spectral 1D Poisson solver via DST-I (FFTW), homogeneous Dirichlet BC.
 
-Direct ``O(N log N)`` solver: forward DST, divide by eigenvalues,
-backward DST. The FFTW plan is built once at construction.
+``O(N log N)``: forward DST, divide by eigenvalues, backward DST.
+The FFTW plan is built once at construction.
 
 Parameters
 ----------
@@ -356,7 +356,7 @@ numpy.ndarray of shape (N,)
 Spectral 2D Poisson solver via DST-I (FFTW), homogeneous Dirichlet on
 all four faces.
 
-Direct ``O(N^2 log N)`` solver via tensor product of 1D DSTs.
+``O(N^2 log N)`` via tensor product of 1D DSTs.
 
 Parameters
 ----------
