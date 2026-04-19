@@ -1,0 +1,52 @@
+# Doxygen config for poisson_cpp C++ API reference.
+# Run from repo root: doxygen docs/Doxyfile
+# Output: docs/_build/doxygen/html/
+
+PROJECT_NAME           = "poisson_cpp"
+PROJECT_NUMBER         = "0.1.0"
+PROJECT_BRIEF          = "C++20 Poisson solvers: FV, spectral, AMR, multigrid, CG"
+
+OUTPUT_DIRECTORY       = docs/_build/doxygen
+CREATE_SUBDIRS         = NO
+ALLOW_UNICODE_NAMES    = YES
+OUTPUT_LANGUAGE        = English
+
+INPUT                  = include/poisson README.md
+FILE_PATTERNS          = *.hpp *.h
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MULTILINE_CPP_IS_BRIEF = NO
+INHERIT_DOCS           = YES
+INLINE_INHERITED_MEMB  = NO
+SEPARATE_MEMBER_PAGES  = NO
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_COLORSTYLE        = LIGHT
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+SEARCHENGINE           = YES
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+HAVE_DOT               = NO
+CLASS_DIAGRAMS         = YES
+
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+QUIET                  = YES

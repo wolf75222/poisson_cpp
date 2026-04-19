@@ -1,0 +1,69 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'include/**'
+      - 'src/**'
+      - 'python/**'
+      - 'pyproject.toml'
+      - 'CMakeLists.txt'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System deps
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev libfftw3-dev doxygen graphviz
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install poisson_cpp + Sphinx
+        run: |
+          pip install --upgrade pip
+          pip install .
+          pip install -r docs/sphinx/requirements.txt
+
+      - name: Build Sphinx
+        run: sphinx-build -b html -W --keep-going docs/sphinx docs/_build/sphinx
+
+      - name: Build Doxygen
+        run: doxygen docs/Doxyfile
+
+      - name: Combine sites (Doxygen at /cpp/)
+        run: |
+          mkdir -p docs/_site
+          cp -r docs/_build/sphinx/. docs/_site/
+          mkdir -p docs/_site/cpp
+          cp -r docs/_build/doxygen/html/. docs/_site/cpp/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
