@@ -32,10 +32,15 @@ if(NOT TARGET Eigen3::Eigen)
     URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
     URL_HASH SHA256=8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72)
   FetchContent_MakeAvailable(eigen_headers)
-  add_library(Eigen3_Eigen INTERFACE)
-  add_library(Eigen3::Eigen ALIAS Eigen3_Eigen)
-  target_include_directories(Eigen3_Eigen SYSTEM INTERFACE
-    $<BUILD_INTERFACE:${eigen_headers_SOURCE_DIR}>)
+  # Modern CMake (4.x) processes Eigen's own CMakeLists during MakeAvailable
+  # and creates Eigen3::Eigen itself; only fall back to a manual alias when
+  # that didn't happen.
+  if(NOT TARGET Eigen3::Eigen)
+    add_library(Eigen3_Eigen INTERFACE)
+    add_library(Eigen3::Eigen ALIAS Eigen3_Eigen)
+    target_include_directories(Eigen3_Eigen SYSTEM INTERFACE
+      $<BUILD_INTERFACE:${eigen_headers_SOURCE_DIR}>)
+  endif()
 endif()
 
 # nlohmann/json for snapshot I/O.
