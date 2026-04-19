@@ -42,6 +42,10 @@ Tous matrix-free. Pseudocode de chaque solveur :
 [**docs/ALGORITHMS.md**](docs/ALGORITHMS.md). Conventions de grille
 et schémas modules : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+Documentation en ligne :
+- Python (Sphinx) : <https://wolf75222.github.io/poisson_cpp/>
+- C++ (Doxygen) : <https://wolf75222.github.io/poisson_cpp/cpp/>
+
 ## Quick start
 
 ### Prérequis

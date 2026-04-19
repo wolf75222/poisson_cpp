@@ -40,8 +40,7 @@ export PYTHONPATH=$PWD/build/python
 
 ## Activer FFTW après coup
 
-Si tu installes FFTW après une première install sans, force la
-recompilation :
+Si FFTW est installé après coup, force la recompilation :
 
 ```bash
 pip install --force-reinstall --no-binary poisson-cpp poisson-cpp
