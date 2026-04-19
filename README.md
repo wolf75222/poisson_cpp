@@ -94,7 +94,37 @@ Options CMake :
 
 ## Utilisation depuis Python (pybind11)
 
-Build du module :
+### Installation pip
+
+```bash
+pip install git+https://github.com/wolf75222/poisson_cpp.git
+```
+
+Le wheel est compilé localement par scikit-build-core. Prérequis :
+compilateur C++20 et CMake ≥ 3.20. Eigen et nlohmann_json sont récupérés
+automatiquement. FFTW3 est optionnel ; sans lui, `DSTSolver1D/2D` sont
+désactivés et un `RuntimeWarning` à l'import donne la commande
+d'installation pour ta plateforme.
+
+### Google Colab
+
+```python
+!apt-get install -y libfftw3-dev > /dev/null     # optionnel, pour le DST
+!pip install git+https://github.com/wolf75222/poisson_cpp.git
+
+import numpy as np, poisson_cpp as pc
+g = pc.Grid2D(1.0, 1.0, 64, 64)
+V, rep = pc.Solver2D(g, eps=1.0, uL=0.0, uR=10.0).solve(np.zeros((64,64)), tol=1e-8)
+print(rep)
+```
+
+Si FFTW est installé après coup, force la recompilation :
+
+```bash
+pip install --force-reinstall --no-binary poisson-cpp poisson-cpp
+```
+
+### Build manuel depuis les sources
 
 ```bash
 cmake -B build -DPOISSON_BUILD_PYTHON=ON

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["scikit-build-core>=0.8", "pybind11>=2.13"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "poisson-cpp"
+version = "0.1.0"
+description = "C++20 Poisson solvers (FV, spectral DST, AMR quadtree, multigrid, CG) with Python bindings."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Romain Despoullains" }]
+dependencies = ["numpy>=1.20"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage = "https://github.com/wolf75222/poisson_cpp"
+
+[tool.scikit-build]
+minimum-version = "0.8"
+cmake.version = ">=3.20"
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"
+wheel.install-dir = "."
+wheel.packages = ["python/poisson_cpp"]
+
+[tool.scikit-build.cmake.define]
+POISSON_BUILD_PYTHON = "ON"
+POISSON_BUILD_TESTS = "OFF"
+POISSON_BUILD_BENCHMARKS = "OFF"
+POISSON_BUILD_EXAMPLES = "OFF"

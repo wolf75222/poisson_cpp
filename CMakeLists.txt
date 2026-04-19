@@ -57,7 +57,12 @@ if(FFTW3_FOUND)
   message(STATUS "FFTW3 found: ${FFTW3_LIBRARY}")
 else()
   set(POISSON_HAVE_FFTW3 OFF)
-  message(STATUS "FFTW3 not found; spectral solvers will be disabled")
+  message(WARNING
+    "FFTW3 not found, DSTSolver1D/2D disabled. Install FFTW then rebuild:\n"
+    "  Debian/Ubuntu/Colab : sudo apt-get install -y libfftw3-dev\n"
+    "  macOS Homebrew      : brew install fftw\n"
+    "  conda / mamba       : conda install -c conda-forge fftw\n"
+    "  Fedora / RHEL       : sudo dnf install fftw-devel")
 endif()
 
 # OpenMP for parallel red-black SOR / Gauss-Seidel sweeps. Gracefully optional:
@@ -137,7 +142,10 @@ target_compile_options(poisson PUBLIC
 # -----------------------------------------------------------------------------
 # Examples and tests
 # -----------------------------------------------------------------------------
-add_subdirectory(examples)
+option(POISSON_BUILD_EXAMPLES "Build CLI demo examples" ON)
+if(POISSON_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 option(POISSON_BUILD_BENCHMARKS "Build simple chrono-based benchmarks" ON)
 if(POISSON_BUILD_BENCHMARKS)
