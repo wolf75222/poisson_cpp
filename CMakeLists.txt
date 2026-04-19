@@ -116,6 +116,11 @@ endif()
 add_library(poisson ${POISSON_SOURCES})
 add_library(poisson::poisson ALIAS poisson)
 
+# Required so the static archive can be linked into the pybind11 shared
+# module on Linux. macOS toolchains compile PIC by default, which is why
+# this only surfaces in CI / Colab builds.
+set_target_properties(poisson PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 if(POISSON_HAVE_FFTW3)
   target_link_libraries(poisson PUBLIC FFTW3::fftw3)
   target_compile_definitions(poisson PUBLIC POISSON_HAVE_FFTW3=1)
