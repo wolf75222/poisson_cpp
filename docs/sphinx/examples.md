@@ -1,9 +1,8 @@
 # Exemples
 
-Trois workflows complets, transposés depuis
-[`python/plot_tp_style.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
-Chaque section donne le code minimal, ce que retourne le solveur, et
-comment exploiter le résultat.
+Workflows complets utilisant les bindings poisson_cpp depuis Python.
+Chaque section donne le code minimal et explique ce que retourne le
+solveur.
 
 ## TP1 : Poisson 1D, comparaison à la solution analytique
 
@@ -184,6 +183,56 @@ Pour la version *discrète* (mode propre exact du Laplacien 5-points),
 voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
 `~eps_machine` (DST inverse exactement le Laplacien discret).
 
+## Multigrille uniforme : SOR vs V-cycle
+
+Sur une grille uniforme, SOR coûte `O(N³)` itérations alors qu'un V-cycle
+multigrille avec un bon smoother converge en `O(N²)` au total. On le
+vérifie sur une source manufacturée avec solution exacte connue.
+
+`gs_smooth` (lisseur Gauss-Seidel red-black), `laplacian_fv` (calcul du
+résidu) et `vcycle_uniform` sont les briques exposées. Pour écrire son
+propre V-cycle, utiliser aussi `restrict_avg`, `prolongate_const` et
+`prolongate_bilinear`.
+
+```python
+import math
+import numpy as np
+import poisson_cpp as pc
+
+N = 64
+h = 1.0 / N
+
+# Source manufacturée : V_exact(x, y) = sin(pi x) sin(pi y), donc
+# rho = 2 pi^2 V_exact (avec eps0 = 1).
+xc = (np.arange(N) + 0.5) * h
+X, Y = np.meshgrid(xc, xc, indexing="ij")
+V_exact = np.sin(math.pi * X) * np.sin(math.pi * Y)
+rho     = 2 * (math.pi ** 2) * V_exact
+
+# Méthode 1 : SOR pur via gs_smooth (omega = 1, pas red-black SOR)
+V_gs = np.zeros((N, N), order="F")
+res_gs = []
+for k in range(200):
+    pc.gs_smooth(V_gs, np.asfortranarray(rho), h, n_iter=5)
+    r = float(np.max(np.abs(rho - pc.laplacian_fv(V_gs, h))))
+    res_gs.append(r)
+
+# Méthode 2 : V-cycle multigrille uniforme
+V_mg = np.zeros((N, N))
+res_mg = []
+for k in range(20):
+    V_mg = pc.vcycle_uniform(V_mg, rho, h, n_pre=2, n_post=2, n_min=4)
+    r = float(np.max(np.abs(rho - pc.laplacian_fv(V_mg, h))))
+    res_mg.append(r)
+
+print(f"GS  ({len(res_gs)*5} sweeps): résidu final {res_gs[-1]:.2e}")
+print(f"MG  ({len(res_mg)} V-cycles): résidu final {res_mg[-1]:.2e}")
+print(f"erreur MG vs exacte : {np.max(np.abs(V_mg - V_exact)):.2e}")
+```
+
+20 V-cycles MG amènent le résidu sous `1e-10` ; il faudrait des
+milliers de sweeps Gauss-Seidel pour atteindre la même précision.
+
 ## TP5 : AMR quadtree sur source localisée
 
 Pour une source concentrée (ici une gaussienne au centre du domaine), un
@@ -236,6 +285,12 @@ for _ in range(5):
 print(f"après 5 V-cycles : |résidu|_∞ = "
       f"{np.abs(pc.amr_residual(arr_mg)).max():.2e}")
 
+# 5. Renvoyer V dans l'arbre (utile si on veut itérer sur cell.V depuis Python)
+pc.writeback(tree, arr_mg.keys, arr_mg.V)
+center_key = pc.make_key(8, 1 << 7, 1 << 7)
+if tree.is_leaf(center_key):
+    print("V au centre :", tree.at(center_key).V)
+
 # 5. Visualisation : V color-coded + bord des feuilles
 fig, ax = plt.subplots(figsize=(6, 6))
 patches, colors = [], []
@@ -260,6 +315,59 @@ sur la grille grossière, pas Galerkin). Pour une réduction plus agressive,
 voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py)
 qui résout une scène à 10 charges sur 5000 feuilles.
 
+## CG vs SOR : convergence comparée
+
+Sur le même problème (Dirichlet en x, Neumann en y, sans source), CG
+converge en `O(sqrt(kappa))` itérations, SOR en `O(N)` itérations avec
+ω_opt. La constante en pratique : CG est ~5× plus rapide. On compare
+en enregistrant l'historique du résidu côté CG et le résidu par paquet
+côté SOR.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import poisson_cpp as pc
+
+N, uL, uR = 64, 0.0, 10.0
+g = pc.Grid2D(1.0, 1.0, N, N)
+
+# CG : solve_poisson_cg met V à jour en place et renvoie l'historique
+V_cg = np.zeros((N, N), order="F")
+rep_cg, hist_cg = pc.solve_poisson_cg(
+    V_cg, np.zeros((N, N), order="F"), g,
+    uL=uL, uR=uR, tol=1e-10, max_iter=2000, record_history=True,
+)
+
+# SOR : appel par paquets pour récupérer le résidu intermédiaire
+sor = pc.Solver2D(g, eps=1.0, uL=uL, uR=uR)
+V_sor = np.zeros((N, N), order="F")
+rho   = np.zeros((N, N), order="F")
+hist_sor, iters_sor, total = [], [], 0
+for _ in range(500):
+    rep = sor.solve_inplace(V_sor, rho, omega=-1.0, tol=1e-10, max_iter=20)
+    total += rep.iterations
+    hist_sor.append(rep.residual); iters_sor.append(total)
+    if rep.residual < 1e-10 or rep.iterations < 20:
+        break
+
+print(f"CG  : {rep_cg.iterations} iter, résidu {rep_cg.residual:.2e}")
+print(f"SOR : {total} iter, résidu {hist_sor[-1]:.2e}")
+
+plt.semilogy(range(len(hist_cg)), hist_cg, "o-", ms=3, label="CG")
+plt.semilogy(iters_sor, hist_sor, "s-", ms=3, label="SOR ω_opt")
+plt.xlabel("itération"); plt.ylabel("résidu"); plt.legend(); plt.grid(which="both")
+plt.show()
+```
+
+Pour activer le préconditionneur Jacobi sur CG, passer
+`use_preconditioner=True` à `solve_poisson_cg`. À ε uniforme, le gain
+est marginal voire négatif (la diagonale du Laplacien FV est presque
+constante en intérieur) ; à ε fortement variable, Jacobi capture la
+variation locale et accélère.
+
 ## Plus loin
 
-- CG vs SOR head-to-head : voir [`python/plot_cg.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_cg.py).
+- Scène AMR multi-charges (10 gaussiennes ±q, 5000 feuilles) :
+  [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py).
+- Reproductibilité figures `docs/figures/*.png` :
+  [`python/plot_tp_style.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
