@@ -846,7 +846,7 @@ params : CompositeParams, optional
 )doc");
 
   // Module metadata
-  m.attr("__version__") = "0.1.0";
+  m.attr("__version__") = "0.2.0";
 #if defined(POISSON_HAVE_FFTW3)
   m.attr("has_fftw3") = true;
 #else

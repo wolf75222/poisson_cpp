@@ -8,7 +8,7 @@
 # Output: docs/_build/doxygen/html/
 
 PROJECT_NAME           = "poisson_cpp"
-PROJECT_NUMBER         = "0.1.0"
+PROJECT_NUMBER         = "0.2.0"
 PROJECT_BRIEF          = "C++20 Poisson solvers: FV, spectral, AMR, multigrid, CG"
 
 OUTPUT_DIRECTORY       = docs/_build/doxygen
