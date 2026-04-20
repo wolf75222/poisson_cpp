@@ -7,8 +7,11 @@ comment exploiter le résultat.
 
 ## TP1 : Poisson 1D, comparaison à la solution analytique
 
-Énoncé : `-V''(x) = 0` sur `[0, L]` avec `V(0) = uL`, `V(L) = uR`. La
-solution exacte est la rampe linéaire `V(x) = uL + (uR - uL) * x / L`.
+Poisson 1D sans charge entre deux électrodes : on fixe `V(0) = uL` et
+`V(L) = uR`, et on résout `-V''(x) = 0`. Sans source, la solution est
+la rampe linéaire `V(x) = uL + (uR - uL) * x / L`, qu'on connaît
+analytiquement. C'est le test minimal : tout écart à la rampe vient des
+erreurs d'arrondi du solveur direct, pas du schéma de discrétisation.
 
 ```python
 import numpy as np
@@ -45,13 +48,14 @@ précision (`O(N) * eps_machine * ||V||_inf`).
 
 ## TP3 : SOR 2D + courbe de convergence
 
-Énoncé : Poisson 2D sans charge, Dirichlet en x (`V = uL` à gauche,
-`V = uR` à droite), Neumann en y. La solution est une rampe linéaire
-en x indépendante de y.
+Poisson 2D sans charge dans un carré `[0, L]²`. Bords gauche et droit
+fixés à `V = uL` et `V = uR` (Dirichlet), bords haut et bas en Neumann
+homogène (`∂V/∂n = 0`). Sans source et avec Neumann en y, la solution
+doit être invariante en y et former la même rampe linéaire qu'au TP1.
 
-Pour récupérer l'historique du résidu, appeler `solve_inplace` par
-paquets de quelques itérations et lire `report.residual` après chaque
-paquet.
+On en profite pour tracer la décroissance du résidu : on appelle
+`solve_inplace` par paquets de quelques itérations et on lit
+`report.residual` après chaque paquet.
 
 ```python
 N, uL, uR = 64, 0.0, 10.0
@@ -95,10 +99,12 @@ red+black à `tol=1e-10`. L'écart à la rampe analytique reste sous `1e-9`.
 
 ## TP4 : Étude de convergence DST spectrale
 
-Énoncé : solution manufacturée `V(x, y) = sin(πx/L) sin(πy/L)`, donc
-`-Δ V = 2 (π/L)² V`. On résout par DST pour plusieurs N et on trace
-l'erreur `||V_num - V_exact||_inf` en fonction de `h = L/(N+1)`. La
-pente attendue en log-log est `+2` (schéma O(h²)).
+On prend une solution analytique connue `V(x, y) = sin(πx/L) sin(πy/L)`,
+on en déduit la source `-Δ V = 2 (π/L)² V`, puis on vérifie que le
+solveur DST retrouve `V` à partir de cette source. En répétant pour
+plusieurs `N` et en traçant l'erreur `||V_num - V_exact||_∞` en fonction
+de `h = L/(N+1)` en log-log, on mesure l'ordre du schéma. On attend
+une pente `+2` car la discrétisation FV 5-points est O(h²).
 
 ```python
 import math
