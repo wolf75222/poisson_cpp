@@ -10,6 +10,7 @@ Python via pybind11.
 
 installation
 quickstart
+examples
 api
 ```
 
