@@ -25,7 +25,7 @@ PYTHONPATH=build/python python3 python/plot_tp_style.py all
 
 ---
 
-## TP1 — Poisson 1D Dirichlet
+## TP1 : Poisson 1D Dirichlet
 
 ![TP1](figures/tp1_poisson_1d.png)
 
@@ -46,7 +46,7 @@ l'écart à l'analytique.
 
 ---
 
-## TP2 — Couches diélectriques 1D
+## TP2 : Couches diélectriques 1D
 
 ![TP2](figures/tp2_dielectric.png)
 
@@ -61,7 +61,7 @@ normal à travers les interfaces diélectriques (Griffiths §4.4).
 
 ---
 
-## TP3 — SOR red-black 2D
+## TP3 : SOR red-black 2D
 
 ![TP3](figures/tp3_sor2d.png)
 
@@ -78,7 +78,7 @@ Coût total `O(N³)` (O(N²) par balayage × O(N) itérations avec ω_opt).
 
 ---
 
-## TP4 — Convergence spectrale O(h²)
+## TP4 : Convergence spectrale O(h²)
 
 ![TP4](figures/tp4_spectral_convergence.png)
 
@@ -98,7 +98,7 @@ même précision). Compromis : DST exige Dirichlet homogène sur les
 
 ---
 
-## TP5 — AMR quadtree sur Gaussienne
+## TP5 : AMR quadtree sur Gaussienne
 
 ![TP5](figures/tp5_amr.png)
 
@@ -127,7 +127,7 @@ Vérifications physiques :
 
 ---
 
-## CG — Gradient Conjugué
+## CG : Gradient Conjugué
 
 ![CG convergence](figures/cg_convergence.png)
 

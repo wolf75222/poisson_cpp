@@ -17,7 +17,7 @@ cmake --build build -j
 Three independent A/B experiments validated against `tests/`
 (57/57 pass at each step):
 
-### 1. AMR SOR — precompute `rhs = h²ρ/ε₀` and `Vc_inv = 1/Vc`
+### 1. AMR SOR : precompute `rhs = h²ρ/ε₀` and `Vc_inv = 1/Vc`
 
 `src/amr/solver.cpp`. Moves two divisions per cell out of the hot loop.
 
@@ -25,7 +25,7 @@ Three independent A/B experiments validated against `tests/`
 |---|---|---|---|
 | amr_sor (640 leaves, 200 sweeps) | 0.665 ms | 0.557 ms | **−16 %** |
 
-### 2. `mg::gs_smooth` — true in-place red-black + `Vc_inv`
+### 2. `mg::gs_smooth` : true in-place red-black + `Vc_inv`
 
 `src/mg/vcycle.cpp`. Replaces "compute full V_gs then use half" with a
 true in-place red-black Gauss-Seidel sweep. Eliminates the N×N scratch
@@ -36,7 +36,7 @@ buffer.
 | gs_smooth 128² (50 sweeps) | 2.51 ms | 0.80 ms | **−68 % (3.1×)** |
 | gs_smooth 256² (50 sweeps) | ~10 ms | 3.22 ms | **−68 % (3.1×)** |
 
-### 3. `fv::Solver2D::solve` — in-place red-black + member `Vc_inv_`
+### 3. `fv::Solver2D::solve` : in-place red-black + member `Vc_inv_`
 
 `src/fv/solver2d.cpp`. Same pattern. Boundary Dirichlet / Neumann
 branches stay inside the stride-2 inner loop; the pattern is
@@ -49,7 +49,7 @@ branch-predictor friendly.
 
 Iteration counts are unchanged; these are pure per-iteration wins.
 
-### 4. `Solver2D::solve` — fold Dirichlet BC into effective rhs to unblock auto-vectorization
+### 4. `Solver2D::solve` : fold Dirichlet BC into effective rhs to unblock auto-vectorization
 
 Discovered via `otool -tV` on the .o file: `mg::gs_smooth` emitted
 307 NEON instructions (75 × `fadd.2d`), while `Solver2D::solve`
@@ -81,7 +81,7 @@ the j-boundary cases. That refactor was attempted (triplicate the j
 loop, inline `update_cell`): SIMD count stayed at 40, perf stayed
 within 1 % of the current code. Reverted to keep the code simple.
 
-### 5. `Solver2D::solve` — `#pragma unroll 4` + `std::max` reduction
+### 5. `Solver2D::solve` : `#pragma unroll 4` + `std::max` reduction
 
 Applied after re-reading CS:APP loop-optimizations.md §2 (k×1 unrolling
 reduces loop overhead) and §5 (branchless `fmax` plays better with
@@ -145,11 +145,11 @@ energy identity, polynomial exactness), pass under both
 
 `benchmarks/bench_solvers.cpp` reports:
 
-- `thomas`      — tridiagonal solve, N coefficients
-- `sor2d`       — `fv::Solver2D::solve` on N×N, tol 1e-8
-- `spectral2d`  — `DSTSolver2D::solve`, N×N (if FFTW available)
-- `gs_smooth`   — `mg::gs_smooth`, 50 sweeps on N×N
-- `amr_sor`     — `amr::sor`, 200 sweeps on a Gaussian-refined tree
+- `thomas`      : tridiagonal solve, N coefficients
+- `sor2d`       : `fv::Solver2D::solve` on N×N, tol 1e-8
+- `spectral2d`  : `DSTSolver2D::solve`, N×N (if FFTW available)
+- `gs_smooth`   : `mg::gs_smooth`, 50 sweeps on N×N
+- `amr_sor`     : `amr::sor`, 200 sweeps on a Gaussian-refined tree
                    (base 16×16, up to level 6, ≈ 640 leaves)
 
 ## Conjugate Gradient: new iterative method

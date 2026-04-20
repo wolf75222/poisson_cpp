@@ -150,7 +150,7 @@ a[1:] = -1.0; c[:-1] = -1.0
 x = pc.thomas(a, b, c, d)
 print("thomas:", x[:3])                    # [1.0, 2.0, ... ]
 
-# ---- 2. Solver2D — FV + SOR red-black ω_opt auto -----------------------
+# ---- 2. Solver2D : FV + SOR red-black ω_opt auto -----------------------
 grid = pc.Grid2D(1.0, 1.0, 64, 64)         # [0,1]² cell-centered
 sor  = pc.Solver2D(grid, eps=1.0, uL=0.0, uR=10.0)   # Dirichlet x, Neumann y
 rho  = np.zeros((64, 64))
