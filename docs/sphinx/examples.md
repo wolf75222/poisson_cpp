@@ -45,6 +45,8 @@ plt.show()
 L'erreur reste sous `~1e-14` partout, soit la borne de Thomas en double
 précision (`O(N) * eps_machine * ||V||_inf`).
 
+![TP1 : Poisson 1D + erreur](../figures/tp1_poisson_1d.png)
+
 ## TP2 : couches diélectriques 1D et continuité de D
 
 Empilement de trois couches diélectriques sur `[0, L]` avec
@@ -86,6 +88,8 @@ print(f"D_num ≈ {D.mean():.4f},  D_theo = {D_theo:.4f}")
 harmonique aux faces préserve la composante normale de `D` à travers
 les interfaces. Le code complet avec tracé V(x)/E(x)/D(x) est dans
 [`python/plot_tp_style.py:tp2`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
+
+![TP2 : couches diélectriques](../figures/tp2_dielectric.png)
 
 ## TP3 : SOR 2D + courbe de convergence
 
@@ -138,6 +142,8 @@ plt.show()
 Avec `omega=-1` et `N=64`, ω_opt ≈ 1.91 et SOR converge en ~600 sweeps
 red+black à `tol=1e-10`. L'écart à la rampe analytique reste sous `1e-9`.
 
+![TP3 : SOR 2D](../figures/tp3_sor2d.png)
+
 ## TP4 : Étude de convergence DST spectrale
 
 On prend une solution analytique connue `V(x, y) = sin(πx/L) sin(πy/L)`,
@@ -182,6 +188,8 @@ La pente empirique tombe sur `+2.000` à mieux que 1 % pour `N >= 31`.
 Pour la version *discrète* (mode propre exact du Laplacien 5-points),
 voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
 `~eps_machine` (DST inverse exactement le Laplacien discret).
+
+![TP4 : convergence DST O(h²)](../figures/tp4_spectral_convergence.png)
 
 ## Multigrille uniforme : SOR vs V-cycle
 
@@ -314,6 +322,8 @@ Le V-cycle composite divise le résidu par ~0.7 par cycle (re-discrétisation
 sur la grille grossière, pas Galerkin). Pour une réduction plus agressive,
 voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py)
 qui résout une scène à 10 charges sur 5000 feuilles.
+
+![TP5 : maillage AMR + V](../figures/tp5_amr.png)
 
 ## CG vs SOR : convergence comparée
 

@@ -7,9 +7,12 @@ detected platform via ``fftw_install_hint()``.
 
 from __future__ import annotations
 
+import json
 import platform
 import warnings
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+from typing import Union
 
 from ._core import *  # noqa: F401,F403
 from . import _core as _core
@@ -54,6 +57,59 @@ def fftw_install_hint() -> str:
     )
 
 
+def dump_amr_snapshot(
+    tree: "_core.Quadtree",
+    path: Union[str, Path],
+    extra: Union[dict, None] = None,
+) -> Path:
+    """Serialize an AMR :class:`Quadtree` to a JSON file.
+
+    The schema matches the one written by the C++ CLI ``poisson_demo
+    --problem amr --output ...``: a list of leaves with their geometry
+    (``key``, ``level``, ``x``, ``y``, ``h``) and per-leaf scientific
+    data (``V``, ``rho``).
+
+    Parameters
+    ----------
+    tree : Quadtree
+        Tree whose leaves should be persisted.
+    path : str or Path
+        Output file. Parent directory must exist.
+    extra : dict, optional
+        Free-form metadata merged into the top-level JSON object (for
+        example ``{"sigma": 0.04}`` to record problem parameters).
+
+    Returns
+    -------
+    pathlib.Path
+        Absolute path of the written file.
+    """
+    path = Path(path)
+    cells = []
+    for key, cell in tree.leaves().items():
+        cx, cy = tree.cell_center(key)
+        lvl = _core.level_of(key)
+        cells.append({
+            "key": int(key),
+            "level": int(lvl),
+            "x": float(cx),
+            "y": float(cy),
+            "h": float(tree.cell_size(lvl)),
+            "V": float(cell.V),
+            "rho": float(cell.rho),
+        })
+    payload = {
+        "L": float(tree.L()),
+        "level_min": int(tree.level_min()),
+        "num_leaves": int(tree.num_leaves()),
+        "cells": cells,
+    }
+    if extra:
+        payload.update(extra)
+    path.write_text(json.dumps(payload))
+    return path.resolve()
+
+
 if not _core.has_fftw3:
     warnings.warn(
         "poisson_cpp built without FFTW3, DSTSolver1D/2D disabled. To enable:\n\n"
@@ -63,4 +119,4 @@ if not _core.has_fftw3:
     )
 
 __all__ = sorted(set(getattr(_core, "__all__", [n for n in dir(_core) if not n.startswith("_")])
-                    + ["fftw_install_hint", "__version__"]))
+                    + ["fftw_install_hint", "dump_amr_snapshot", "__version__"]))

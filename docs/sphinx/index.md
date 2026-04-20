@@ -11,6 +11,7 @@ Python via pybind11.
 installation
 quickstart
 examples
+custom_vcycle
 api
 ```
 
