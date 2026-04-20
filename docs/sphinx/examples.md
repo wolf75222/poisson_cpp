@@ -184,7 +184,82 @@ Pour la version *discrète* (mode propre exact du Laplacien 5-points),
 voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
 `~eps_machine` (DST inverse exactement le Laplacien discret).
 
+## TP5 : AMR quadtree sur source localisée
+
+Pour une source concentrée (ici une gaussienne au centre du domaine), un
+maillage uniforme gaspille des cellules loin du pic. Le quadtree adapte
+la résolution localement : on raffine récursivement les feuilles dont le
+centre tombe à moins de `4 σ` du pic. Le solveur est ensuite SOR sur les
+arrays plats extraits de l'arbre, puis on accélère avec un V-cycle
+composite (smoother SOR sur AMR + V-cycle uniforme sur la grille de
+fond).
+
+```python
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Rectangle
+import poisson_cpp as pc
+
+L, sigma = 1.0, 0.04
+
+# 1. Critère de raffinement : on subdivise tant qu'une feuille est dans
+#    un disque de rayon 4*sigma autour de la source.
+def predicate(key):
+    lvl = pc.level_of(key)
+    if lvl >= 8:
+        return False
+    h  = L / (1 << lvl)
+    cx = (pc.i_of(key) + 0.5) * h
+    cy = (pc.j_of(key) + 0.5) * h
+    return ((cx - 0.5) ** 2 + (cy - 0.5) ** 2) < (4 * sigma) ** 2
+
+def rho_func(x, y):
+    return math.exp(-((x - 0.5) ** 2 + (y - 0.5) ** 2) / (2 * sigma ** 2))
+
+# 2. Construction de l'arbre : refine + balance 2:1 + évaluation de rho
+tree = pc.Quadtree(L, level_min=4)
+tree.build(predicate, level_max=8, rho_func=rho_func)
+print(f"{tree.num_leaves()} feuilles (vs {(1 << 8) ** 2} en uniforme)")
+
+# 3. Vue plate + résolution SOR sur AMR
+arr = pc.extract_arrays(tree)
+rep = pc.amr_sor(arr, omega=1.85, tol=1e-7, max_iter=5000)
+print(rep)
+print(f"|résidu|_∞ = {np.abs(pc.amr_residual(arr)).max():.2e}")
+
+# 4. Accélération multigrille : 5 V-cycles composites
+arr_mg = pc.extract_arrays(tree)
+for _ in range(5):
+    pc.vcycle_amr_composite(arr_mg, tree)
+print(f"après 5 V-cycles : |résidu|_∞ = "
+      f"{np.abs(pc.amr_residual(arr_mg)).max():.2e}")
+
+# 5. Visualisation : V color-coded + bord des feuilles
+fig, ax = plt.subplots(figsize=(6, 6))
+patches, colors = [], []
+for key, V in zip(arr.keys, arr.V):
+    lvl = pc.level_of(key)
+    h   = L / (1 << lvl)
+    x   = pc.i_of(key) * h
+    y   = pc.j_of(key) * h
+    patches.append(Rectangle((x, y), h, h))
+    colors.append(V)
+pc_coll = PatchCollection(patches, edgecolor="black", linewidth=0.1,
+                          cmap="viridis")
+pc_coll.set_array(np.array(colors))
+ax.add_collection(pc_coll)
+ax.set(xlim=(0, L), ylim=(0, L), aspect="equal", title="V sur le quadtree")
+fig.colorbar(pc_coll, ax=ax, label="V")
+plt.show()
+```
+
+Le V-cycle composite divise le résidu par ~0.7 par cycle (re-discrétisation
+sur la grille grossière, pas Galerkin). Pour une réduction plus agressive,
+voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py)
+qui résout une scène à 10 charges sur 5000 feuilles.
+
 ## Plus loin
 
-- AMR multi-charges (TP5) : voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py).
 - CG vs SOR head-to-head : voir [`python/plot_cg.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_cg.py).

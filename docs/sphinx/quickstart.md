@@ -127,7 +127,7 @@ np.savetxt("V.csv", V, delimiter=",")            # CSV
 | 1D, ε(x) variable (couches diélectriques) | `solve_poisson_1d_dielectric` |
 | 2D Dirichlet homogène, ε uniforme | `DSTSolver2D` (O(N² log N)) |
 | 2D Dirichlet × Neumann mixte | `solve_poisson_cg` (~5× plus rapide que SOR) |
-| Source localisée, gradient fort | `Quadtree` AMR + `vcycle_amr_composite` |
+| Source localisée, gradient fort | `Quadtree` + `extract_arrays` + `amr_sor` (puis `vcycle_amr_composite` pour accélérer) |
 | Reproduction TPs, ω_opt auto | `Solver2D` |
 
 Workflows complets reproduisant TP1/TP3/TP4 du cours : voir

@@ -10,14 +10,19 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
+#include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#include "poisson/amr/morton.hpp"
+#include "poisson/amr/quadtree.hpp"
+#include "poisson/amr/solver.hpp"
 #include "poisson/core/grid.hpp"
 #include "poisson/fv/dielectric.hpp"
 #include "poisson/fv/solver1d.hpp"
 #include "poisson/fv/solver2d.hpp"
 #include "poisson/iter/poisson_cg.hpp"
 #include "poisson/linalg/thomas.hpp"
+#include "poisson/mg/vcycle.hpp"
 
 #if defined(POISSON_HAVE_FFTW3)
 #include "poisson/spectral/dst1d.hpp"
@@ -421,6 +426,424 @@ numpy.ndarray of shape (Nx, Ny)
     Potential ``V`` at the interior nodes (boundary values are zero).
 )doc");
 #endif
+
+  // ========================================================================
+  // FV utility
+  // ========================================================================
+
+  m.def("harmonic_mean", &poisson::fv::harmonic_mean,
+        py::arg("a"), py::arg("b"),
+        R"doc(
+Element-wise harmonic mean ``2 a b / (a + b)``.
+
+Used to compute the effective permittivity at the face between two cells
+with different ``eps_r`` (preserves continuity of the normal component
+of ``D = eps0 eps_r grad V``).
+
+Parameters
+----------
+a, b : numpy.ndarray of shape (N,)
+    Per-element values, must be strictly positive.
+
+Returns
+-------
+numpy.ndarray of shape (N,)
+)doc");
+
+  // ========================================================================
+  // AMR (quadtree)
+  // ========================================================================
+
+  py::enum_<poisson::amr::Direction>(m, "Direction",
+        "Geometric direction across a face of a quadtree cell.")
+      .value("N", poisson::amr::Direction::N)
+      .value("S", poisson::amr::Direction::S)
+      .value("E", poisson::amr::Direction::E)
+      .value("W", poisson::amr::Direction::W);
+
+  py::class_<poisson::amr::Cell>(m, "Cell",
+        "Per-leaf data: potential ``V`` and charge density ``rho``.")
+      .def(py::init<>())
+      .def_readwrite("V",   &poisson::amr::Cell::V,
+                     "Potential at the leaf.")
+      .def_readwrite("rho", &poisson::amr::Cell::rho,
+                     "Charge density at the leaf.");
+
+  py::class_<poisson::amr::Quadtree>(m, "Quadtree", R"doc(
+Cell-centered quadtree on the square domain ``[0, L] x [0, L]`` with
+Morton-encoded keys. Only leaves are stored.
+
+Parameters
+----------
+L : float
+    Side length of the root domain.
+level_min : int
+    Initial uniform refinement level. Builds a ``2^level_min x 2^level_min``
+    grid where every cell is a leaf with ``V = rho = 0``.
+)doc")
+      .def(py::init<double, int>(), py::arg("L"), py::arg("level_min"))
+      .def("cell_size", &poisson::amr::Quadtree::cell_size, py::arg("level"),
+           "Side length of a cell at the given level.")
+      .def("cell_center", &poisson::amr::Quadtree::cell_center, py::arg("key"),
+           "Geometric center ``(x, y)`` of the given cell key.")
+      .def("refine", &poisson::amr::Quadtree::refine, py::arg("key"),
+           "Subdivide the leaf ``key`` into its 4 children. "
+           "``key`` must currently be a leaf.")
+      .def("build",
+           [](poisson::amr::Quadtree& self,
+              const std::function<bool(poisson::amr::CellKey)>& predicate,
+              uint8_t level_max,
+              const std::function<double(double, double)>& rho_func) {
+             self.build(predicate, level_max, rho_func);
+           },
+           py::arg("predicate"), py::arg("level_max"), py::arg("rho_func"),
+           R"doc(
+Refine until every leaf either fails ``predicate`` or hits ``level_max``,
+enforce 2:1 balance, then evaluate ``rho_func(x, y)`` at every leaf
+center and store it in ``Cell.rho``.
+
+Parameters
+----------
+predicate : callable[(int) -> bool]
+    Receives the Morton CellKey of a leaf, returns True to refine.
+level_max : int
+    Maximum refinement level.
+rho_func : callable[(float, float) -> float]
+    Evaluated at every leaf center after refinement.
+)doc")
+      .def("balance_2to1", &poisson::amr::Quadtree::balance_2to1,
+           "Enforce the 2:1 balance constraint on the current tree.")
+      .def("neighbour_leaves",
+           &poisson::amr::Quadtree::neighbour_leaves,
+           py::arg("key"), py::arg("dir"),
+           R"doc(
+Return up to 2 leaf neighbours of ``key`` across face ``dir``.
+
+Returns
+-------
+list[int]
+    Empty if ``key`` is at the boundary, one key for same-level or coarser
+    neighbours, two keys for finer neighbours.
+)doc")
+      .def("is_leaf", &poisson::amr::Quadtree::is_leaf, py::arg("key"),
+           "Return True if the cell key is currently a leaf.")
+      .def("num_leaves", &poisson::amr::Quadtree::num_leaves,
+           "Total number of leaves in the tree.")
+      .def("L", &poisson::amr::Quadtree::L,
+           "Domain side length.")
+      .def("level_min", &poisson::amr::Quadtree::level_min,
+           "Initial uniform refinement level.")
+      .def("at",
+           [](const poisson::amr::Quadtree& self, poisson::amr::CellKey k) {
+             return self.at(k);
+           },
+           py::arg("key"), py::return_value_policy::copy,
+           "Copy of the leaf's :class:`Cell` data.")
+      .def("leaves",
+           [](const poisson::amr::Quadtree& self) {
+             return self.leaves();
+           },
+           "Return ``{key: Cell}`` for all leaves (copy).");
+
+  m.def("make_key", &poisson::amr::make_key,
+        py::arg("level"), py::arg("i"), py::arg("j"),
+        "Encode ``(level, i, j)`` into a Morton CellKey.");
+  m.def("level_of", &poisson::amr::level_of, py::arg("key"),
+        "Refinement level encoded in the CellKey.");
+  m.def("i_of", &poisson::amr::i_of, py::arg("key"),
+        "x-coordinate (cell index at the cell's level) encoded in the key.");
+  m.def("j_of", &poisson::amr::j_of, py::arg("key"),
+        "y-coordinate (cell index at the cell's level) encoded in the key.");
+
+  py::class_<poisson::amr::AMRArrays>(m, "AMRArrays", R"doc(
+Flat array view of a Quadtree, suitable for fast iterative solves.
+
+Built by :func:`extract_arrays`. ``V`` and ``rho`` are mutable; modify
+them then call :func:`writeback` to push results back into the tree.
+)doc")
+      .def_readonly("keys", &poisson::amr::AMRArrays::keys,
+                    "Morton key of each leaf, ordered to match V/rho/h.")
+      .def_readwrite("V",   &poisson::amr::AMRArrays::V,
+                     "Potential per leaf.")
+      .def_readwrite("rho", &poisson::amr::AMRArrays::rho,
+                     "Charge density per leaf.")
+      .def_readonly("h",   &poisson::amr::AMRArrays::h,
+                    "Cell size per leaf.")
+      .def_readonly("Vc",  &poisson::amr::AMRArrays::Vc,
+                    "Diagonal coefficient of the FV stencil per leaf.")
+      .def_readonly("nb0", &poisson::amr::AMRArrays::nb0,
+                    "First neighbour index per face (-1 if absent).")
+      .def_readonly("nb1", &poisson::amr::AMRArrays::nb1,
+                    "Second neighbour index per face (-1 if absent).")
+      .def_readonly("w0",  &poisson::amr::AMRArrays::w0,
+                    "Off-diagonal weight for ``nb0`` per face.")
+      .def_readonly("w1",  &poisson::amr::AMRArrays::w1,
+                    "Off-diagonal weight for ``nb1`` per face.");
+
+  m.def("extract_arrays", &poisson::amr::extract_arrays, py::arg("tree"),
+        R"doc(
+Build an :class:`AMRArrays` view from a fully built :class:`Quadtree`.
+
+The returned view stores precomputed FV stencil weights handling 2:1
+coarse/fine interfaces and Dirichlet (V=0) ghost cells at the boundary.
+
+Parameters
+----------
+tree : Quadtree
+    Source tree. Must already have ``rho`` populated (e.g. via ``build``).
+
+Returns
+-------
+AMRArrays
+)doc");
+
+  m.def("writeback", &poisson::amr::writeback,
+        py::arg("tree"), py::arg("keys"), py::arg("V"),
+        R"doc(
+Push the flat ``V`` array back into the tree leaves.
+
+Parameters
+----------
+tree : Quadtree
+    Tree to update in place.
+keys : list[int]
+    Leaf keys, must match the order of ``V`` (use ``arr.keys``).
+V : numpy.ndarray of shape (n_leaves,)
+)doc");
+
+  py::class_<poisson::amr::SORParams>(m, "AMRSORParams",
+        "Tuning parameters for the AMR SOR solver.")
+      .def(py::init<>())
+      .def_readwrite("omega",    &poisson::amr::SORParams::omega,
+                     "Relaxation factor.")
+      .def_readwrite("tol",      &poisson::amr::SORParams::tol,
+                     "Stopping criterion on max-norm of the per-iteration "
+                     "update.")
+      .def_readwrite("max_iter", &poisson::amr::SORParams::max_iter,
+                     "Iteration cap.")
+      .def_readwrite("eps0",     &poisson::amr::SORParams::eps0,
+                     "Permittivity factor in ``rhs = h^2 rho / eps0``.");
+
+  py::class_<poisson::amr::SORReport>(m, "AMRSORReport",
+        "Result of an AMR SOR run.")
+      .def_readonly("iterations", &poisson::amr::SORReport::iterations,
+                    "Number of sweeps performed.")
+      .def_readonly("residual",   &poisson::amr::SORReport::residual,
+                    "Final ``||V_new - V||_inf``.")
+      .def("__repr__", [](const poisson::amr::SORReport& r) {
+        return "AMRSORReport(iterations=" + std::to_string(r.iterations) +
+               ", residual=" + std::to_string(r.residual) + ")";
+      });
+
+  m.def("amr_sor",
+        [](poisson::amr::AMRArrays& a, double omega, double tol,
+           int max_iter, double eps0) {
+          return poisson::amr::sor(a, {.omega = omega, .tol = tol,
+                                       .max_iter = max_iter, .eps0 = eps0});
+        },
+        py::arg("arr"), py::arg("omega") = 1.85, py::arg("tol") = 1e-8,
+        py::arg("max_iter") = 20'000, py::arg("eps0") = 1.0,
+        R"doc(
+Run Gauss-Seidel-like SOR on the AMR arrays, in place.
+
+Parameters
+----------
+arr : AMRArrays
+    Flat view from :func:`extract_arrays`. ``arr.V`` is updated in place.
+omega : float, optional
+    Relaxation factor. Default ``1.85``.
+tol : float, optional
+    Convergence threshold. Default ``1e-8``.
+max_iter : int, optional
+    Iteration cap. Default ``20_000``.
+eps0 : float, optional
+    Permittivity factor. Default ``1.0``.
+
+Returns
+-------
+AMRSORReport
+)doc");
+
+  m.def("amr_residual", &poisson::amr::residual,
+        py::arg("arr"), py::arg("eps0") = 1.0,
+        R"doc(
+FV residual at every leaf:
+``r_i = sum w * V_neigh + h_i^2 rho_i / eps0 - Vc_i V_i``.
+
+Parameters
+----------
+arr : AMRArrays
+eps0 : float, optional
+    Permittivity factor. Default ``1.0``.
+
+Returns
+-------
+numpy.ndarray of shape (n_leaves,)
+)doc");
+
+  // ========================================================================
+  // Multigrille
+  // ========================================================================
+
+  m.def("gs_smooth",
+        [](Eigen::Ref<Eigen::MatrixXd> V,
+           Eigen::Ref<const Eigen::MatrixXd> rho,
+           double h, int n_iter) {
+          poisson::mg::gs_smooth(V, rho, h, n_iter);
+        },
+        py::arg("V"), py::arg("rho"), py::arg("h"), py::arg("n_iter"),
+        R"doc(
+Gauss-Seidel red-black smoothing sweeps on the uniform cell-centered FV
+Poisson operator with Dirichlet ``V = 0`` on the full boundary.
+
+Parameters
+----------
+V : numpy.ndarray of shape (N, N), order='F'
+    Initial guess; updated in place after ``n_iter`` sweeps.
+rho : numpy.ndarray of shape (N, N), order='F'
+    Right-hand side.
+h : float
+    Cell size.
+n_iter : int
+    Number of sweeps.
+)doc");
+
+  m.def("laplacian_fv", &poisson::mg::laplacian_fv,
+        py::arg("V"), py::arg("h"),
+        R"doc(
+Apply the uniform FV Laplacian: returns ``A V`` where ``A`` is the
+5-point stencil with Dirichlet ``V = 0`` on the boundary.
+
+Parameters
+----------
+V : numpy.ndarray of shape (N, N)
+h : float
+    Cell size.
+
+Returns
+-------
+numpy.ndarray of shape (N, N)
+)doc");
+
+  m.def("restrict_avg", &poisson::mg::restrict_avg, py::arg("r"),
+        R"doc(
+4-cell averaging restriction: ``(N, N) -> (N/2, N/2)``. ``N`` must be even.
+
+Parameters
+----------
+r : numpy.ndarray of shape (N, N)
+
+Returns
+-------
+numpy.ndarray of shape (N/2, N/2)
+)doc");
+
+  m.def("prolongate_const", &poisson::mg::prolongate_const, py::arg("c"),
+        R"doc(
+Piecewise-constant prolongation (order 0): ``(N/2, N/2) -> (N, N)``.
+
+Parameters
+----------
+c : numpy.ndarray of shape (M, M)
+
+Returns
+-------
+numpy.ndarray of shape (2M, 2M)
+)doc");
+
+  m.def("prolongate_bilinear", &poisson::mg::prolongate_bilinear,
+        py::arg("c"),
+        R"doc(
+Bilinear prolongation (order 2): ``(M, M) -> (2M, 2M)`` for cell-centered
+FV. Each fine cell gets a weighted combination of the enclosing coarse
+cell and its two neighbours along the fine cell's offset.
+
+Parameters
+----------
+c : numpy.ndarray of shape (M, M)
+
+Returns
+-------
+numpy.ndarray of shape (2M, 2M)
+)doc");
+
+  m.def("vcycle_uniform", &poisson::mg::vcycle_uniform,
+        py::arg("V"), py::arg("rho"), py::arg("h"),
+        py::arg("n_pre") = 2, py::arg("n_post") = 2, py::arg("n_min") = 4,
+        R"doc(
+Recursive V-cycle multigrid on a uniform grid with Dirichlet ``V = 0``
+on the boundary. Coarsens by factor 2 down to size ``<= n_min``.
+
+Parameters
+----------
+V : numpy.ndarray of shape (N, N)
+    Initial guess.
+rho : numpy.ndarray of shape (N, N)
+    Right-hand side.
+h : float
+    Cell size at the finest level.
+n_pre, n_post : int, optional
+    Pre/post Gauss-Seidel sweeps at each level. Default ``2``.
+n_min : int, optional
+    Coarsest grid size at which to stop recursing. Default ``4``.
+
+Returns
+-------
+numpy.ndarray of shape (N, N)
+    Updated potential.
+)doc");
+
+  py::class_<poisson::mg::CompositeParams>(m, "CompositeParams",
+        "Tuning parameters for the 2-grid composite V-cycle on AMR.")
+      .def(py::init<>())
+      .def_readwrite("n_pre",
+                     &poisson::mg::CompositeParams::n_pre,
+                     "Pre-smoothing SOR sweeps on AMR.")
+      .def_readwrite("n_post",
+                     &poisson::mg::CompositeParams::n_post,
+                     "Post-smoothing SOR sweeps on AMR.")
+      .def_readwrite("n_coarse_cycles",
+                     &poisson::mg::CompositeParams::n_coarse_cycles,
+                     "Number of uniform V-cycles on the coarse problem.")
+      .def_readwrite("omega",
+                     &poisson::mg::CompositeParams::omega,
+                     "SOR omega for AMR smoothing.")
+      .def_readwrite("eps0",
+                     &poisson::mg::CompositeParams::eps0,
+                     "Permittivity factor.");
+
+  m.def("vcycle_amr_composite",
+        [](poisson::amr::AMRArrays& a, const poisson::amr::Quadtree& tree,
+           const poisson::mg::CompositeParams& p) {
+          poisson::mg::vcycle_amr_composite(a, tree, p);
+        },
+        py::arg("arr"), py::arg("tree"),
+        py::arg("params") = poisson::mg::CompositeParams{},
+        R"doc(
+One composite 2-grid V-cycle on an AMR tree.
+
+Steps:
+  1. SOR pre-smoothing on AMR leaves.
+  2. AMR residual ``r``.
+  3. Volume-weighted restriction ``r -> r_c`` on a uniform
+     ``2^level_min`` grid.
+  4. ``n_coarse_cycles`` uniform V-cycles to approximately solve
+     ``A delta = r_c``.
+  5. Bilinear prolongation of ``delta`` back to AMR leaves
+     (``V += delta``).
+  6. SOR post-smoothing on AMR leaves.
+
+The AMR array state is updated in place.
+
+Parameters
+----------
+arr : AMRArrays
+    Flat view, updated in place.
+tree : Quadtree
+    The tree from which ``arr`` was extracted.
+params : CompositeParams, optional
+    Tuning parameters; defaults match the C++ defaults.
+)doc");
 
   // Module metadata
   m.attr("__version__") = "0.1.0";
