@@ -1,11 +1,11 @@
-# TPs reproductibles
+# Exemples
 
 Trois workflows complets, transposés depuis
 [`python/plot_tp_style.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
 Chaque section donne le code minimal, ce que retourne le solveur, et
 comment exploiter le résultat.
 
-## TP1 — Poisson 1D, comparaison à la solution analytique
+## TP1 : Poisson 1D, comparaison à la solution analytique
 
 Énoncé : `-V''(x) = 0` sur `[0, L]` avec `V(0) = uL`, `V(L) = uR`. La
 solution exacte est la rampe linéaire `V(x) = uL + (uR - uL) * x / L`.
@@ -43,7 +43,7 @@ plt.show()
 L'erreur reste sous `~1e-14` partout, soit la borne de Thomas en double
 précision (`O(N) * eps_machine * ||V||_inf`).
 
-## TP3 — SOR 2D + courbe de convergence
+## TP3 : SOR 2D + courbe de convergence
 
 Énoncé : Poisson 2D sans charge, Dirichlet en x (`V = uL` à gauche,
 `V = uR` à droite), Neumann en y. La solution est une rampe linéaire
@@ -93,7 +93,7 @@ plt.show()
 Avec `omega=-1` et `N=64`, ω_opt ≈ 1.91 et SOR converge en ~600 sweeps
 red+black à `tol=1e-10`. L'écart à la rampe analytique reste sous `1e-9`.
 
-## TP4 — Étude de convergence DST spectrale
+## TP4 : Étude de convergence DST spectrale
 
 Énoncé : solution manufacturée `V(x, y) = sin(πx/L) sin(πy/L)`, donc
 `-Δ V = 2 (π/L)² V`. On résout par DST pour plusieurs N et on trace
