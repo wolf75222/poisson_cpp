@@ -46,6 +46,48 @@ plt.show()
 L'erreur reste sous `~1e-14` partout, soit la borne de Thomas en double
 précision (`O(N) * eps_machine * ||V||_inf`).
 
+## TP2 : couches diélectriques 1D et continuité de D
+
+Empilement de trois couches diélectriques sur `[0, L]` avec
+`ε_r = 5` pour `x < 0.3`, `ε_r = 1` pour `0.3 ≤ x < 0.7`, `ε_r = 2`
+ensuite. Électrodes à `V(0) = 15 V` et `V(L) = 0`, pas de charge
+volumique. Comme `∇·D = 0` sans charge surfacique, le déplacement
+`D = ε₀ ε_r dV/dx` doit être *constant* dans tout le domaine ; le
+potentiel `V` reste continu mais sa pente change à chaque interface
+(plus pentue dans les couches de faible `ε_r`).
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import poisson_cpp as pc
+
+N, L, uL, uR, eps0 = 200, 1.0, 15.0, 0.0, 1.0
+
+grid  = pc.Grid1D(L, N)
+x     = np.array([grid.x(i) for i in range(N)])
+eps_r = np.where(x < 0.3, 5.0, np.where(x < 0.7, 1.0, 2.0))
+rho   = np.zeros(N)
+
+# Solveur direct, ε(x) variable, moyenne harmonique aux faces
+V = pc.solve_poisson_1d_dielectric(rho, eps_r, uL, uR, grid, eps0)
+
+# Champ E et déplacement D aux faces
+dx       = L / (N - 1)
+eps_face = 2 * eps_r[:-1] * eps_r[1:] / (eps_r[:-1] + eps_r[1:])
+E        = -(V[1:] - V[:-1]) / dx
+D        = eps0 * eps_face * E
+
+# Valeur théorique de D (constante par conservation)
+D_theo = eps0 * (uL - uR) / (dx * np.sum(1.0 / eps_face))
+print(f"D varie de {(D.max()-D.min())/abs(D.mean()):.1e} relatif")
+print(f"D_num ≈ {D.mean():.4f},  D_theo = {D_theo:.4f}")
+```
+
+`D` reste constant à `~1e-13` près (précision machine) : la moyenne
+harmonique aux faces préserve la composante normale de `D` à travers
+les interfaces. Le code complet avec tracé V(x)/E(x)/D(x) est dans
+[`python/plot_tp_style.py:tp2`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
+
 ## TP3 : SOR 2D + courbe de convergence
 
 Poisson 2D sans charge dans un carré `[0, L]²`. Bords gauche et droit
@@ -145,6 +187,4 @@ voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
 ## Plus loin
 
 - AMR multi-charges (TP5) : voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py).
-- Diélectrique multicouche (TP2) : voir [`python/plot_tp_style.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py)
-  fonction `tp2()`.
 - CG vs SOR head-to-head : voir [`python/plot_cg.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_cg.py).

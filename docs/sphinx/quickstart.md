@@ -123,7 +123,8 @@ np.savetxt("V.csv", V, delimiter=",")            # CSV
 
 | Problème | Solveur recommandé |
 |---|---|
-| 1D, ε quelconque | `solve_poisson_1d` (Thomas direct) |
+| 1D, ε uniforme | `solve_poisson_1d` (Thomas direct) |
+| 1D, ε(x) variable (couches diélectriques) | `solve_poisson_1d_dielectric` |
 | 2D Dirichlet homogène, ε uniforme | `DSTSolver2D` (O(N² log N)) |
 | 2D Dirichlet × Neumann mixte | `solve_poisson_cg` (~5× plus rapide que SOR) |
 | Source localisée, gradient fort | `Quadtree` AMR + `vcycle_amr_composite` |

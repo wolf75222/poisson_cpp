@@ -29,8 +29,14 @@ from matplotlib.collections import PatchCollection
 
 
 # Try pybind first; fall back to JSON if the module isn't built.
+# Python prepends the script's directory to sys.path, which would let the
+# source `python/poisson_cpp/__init__.py` shim shadow the installed wheel
+# (where _core.so actually lives). Remove it so `import poisson_cpp` finds
+# the installed package.
+_script_dir = str(Path(__file__).resolve().parent)
+sys.path = [p for p in sys.path if p not in ("", _script_dir)]
 try:
-    # Allow running from the project root without installing the module.
+    # Allow running from a CMake build tree without pip-installing.
     _build_dir = Path(__file__).resolve().parent.parent / "build" / "python"
     if _build_dir.exists():
         sys.path.insert(0, str(_build_dir))
@@ -370,49 +376,28 @@ def tp5() -> None:
 # ---------------------------------------------------------------------------
 
 def tp2() -> None:
-    # Snapshot via CLI (Solver1D dielectric is not yet in the pybind module).
-    root = Path(__file__).resolve().parent.parent
-    snap = root / "data" / "snapshots" / "tp2_dielectric.json"
-    # The CLI's poisson1d currently assumes uniform eps=1. Build the snapshot
-    # from scratch using the existing reference snapshot schema (see
-    # python/dump_reference.py for a producer). For the figure we fall back
-    # to a pure Python implementation that mirrors the C++ Solver1D
-    # dielectric stencil (harmonic-mean face permittivity, tridiagonal).
+    if not HAVE_PC:
+        raise RuntimeError("Build the pybind module: -DPOISSON_BUILD_PYTHON=ON")
     N = 200
     L, uL, uR, eps0 = 1.0, 15.0, 0.0, 1.0
-    # 3-layer dielectric: ε_r(x) = 5 for x < 0.3, 1 for 0.3 ≤ x < 0.7, 2 else.
-    x = np.linspace(0.0, L, N)
+    # 3-layer dielectric: eps_r(x) = 5 for x < 0.3, 1 for 0.3 <= x < 0.7, 2 else.
+    grid = pc.Grid1D(L, N)
+    x = np.array([grid.x(i) for i in range(N)])
     eps_r = np.where(x < 0.3, 5.0, np.where(x < 0.7, 1.0, 2.0))
-    # Harmonic mean at faces (indices 0..N-2 → face between cell i and i+1).
-    eps_face = 2 * eps_r[:-1] * eps_r[1:] / (eps_r[:-1] + eps_r[1:])
-    # Tridiagonal: - (eps_{i-1/2} V_{i-1} - (eps_{i-1/2}+eps_{i+1/2}) V_i
-    #               + eps_{i+1/2} V_{i+1}) / dx² = ρ_i (= 0 here)
-    # Boundary: V(0) = uL, V(N-1) = uR.
-    dx = L / (N - 1)
     rho = np.zeros(N)
-    a = np.zeros(N); b = np.zeros(N); c = np.zeros(N)
-    b[0] = 1.0; rhs = rho.copy(); rhs[0] = uL
-    for i in range(1, N - 1):
-        a[i] = -eps_face[i - 1] / dx ** 2
-        c[i] = -eps_face[i]     / dx ** 2
-        b[i] = -(a[i] + c[i])
-        rhs[i] = 0.0
-    b[-1] = 1.0; rhs[-1] = uR
-    if HAVE_PC:
-        V = pc.thomas(a, b, c, rhs)
-    else:
-        from scipy.linalg import solve_banded
-        ab = np.zeros((3, N)); ab[0, 1:] = c[:-1]; ab[1, :] = b; ab[2, :-1] = a[1:]
-        V = solve_banded((1, 1), ab, rhs)
+    V = pc.solve_poisson_1d_dielectric(rho, eps_r, uL, uR, grid, eps0)
 
-    # Electric field and displacement.
-    E = -(V[1:] - V[:-1]) / dx                    # E at faces (size N-1)
-    D = eps0 * eps_face * E                       # D at faces
-    # "Theoretical": since ∇·D = 0 and no surface charges, D must be the
-    # same constant everywhere. Solve for it from the total potential drop:
-    #   V_uL - V_uR = Σ D_i · dx / (ε_face_i · ε₀)
+    # Harmonic-mean face permittivity (matches the C++ stencil).
+    eps_face = 2 * eps_r[:-1] * eps_r[1:] / (eps_r[:-1] + eps_r[1:])
+    dx = L / (N - 1)
+
+    # Electric field and displacement at faces.
+    E = -(V[1:] - V[:-1]) / dx
+    D = eps0 * eps_face * E
+    # Theoretical D: with rho = 0 and no surface charges, D is constant
+    # everywhere. Recover it from the total potential drop:
+    #   V_uL - V_uR = sum_i D_i * dx / (eps_face_i * eps0)
     D_theo = eps0 * (uL - uR) / (dx * np.sum(1.0 / eps_face))
-
     D_var_rel = float((D.max() - D.min()) / abs(D.mean()))
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
@@ -425,30 +410,29 @@ def tp2() -> None:
                                   (0.7, 1.0, "ε_r=2", "palegreen")]:
         if color != "white":
             ax.axvspan(lo, hi, alpha=0.25, color=color, label=label)
-    ax.set(title="TP2 — V(x) avec couches diélectriques",
+    ax.set(title="TP2 : V(x) avec couches diélectriques",
            xlabel="x", ylabel="V(x)")
     ax.legend(); ax.grid(alpha=0.3)
 
     # E(x) showing the jumps at interfaces.
     x_face = (x[:-1] + x[1:]) / 2
     axes[1].plot(x_face, E, lw=1.2, color="C1")
-    axes[1].set(title="E(x) = −dV/dx aux faces",
+    axes[1].set(title="E(x) = -dV/dx aux faces",
                 xlabel="x", ylabel="E")
     axes[1].grid(alpha=0.3)
 
-    # D(x) — must be flat to machine precision.
+    # D(x) is flat to machine precision.
     axes[2].plot(x_face, D, lw=1.5, color="C2", label="D_num")
     axes[2].axhline(D_theo, color="k", ls="--", lw=1, label="D théorique")
     axes[2].set(title=f"D = ε·E (continuité : "
-                      f"(max−min)/|moy| = {D_var_rel:.1e})",
+                      f"(max-min)/|moy| = {D_var_rel:.1e})",
                 xlabel="x", ylabel="D")
     axes[2].legend(); axes[2].grid(alpha=0.3)
 
     out = FIG_DIR / "tp2_dielectric.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp2] D_num ∈ [{D.min():.4f}, {D.max():.4f}]  "
-          f"variation relative {D_var_rel:.2e}  →  {out}")
-    _ = snap  # suppress unused-name warning
+    print(f"[tp2] D_num in [{D.min():.4f}, {D.max():.4f}]  "
+          f"variation relative {D_var_rel:.2e}  ->  {out}")
 
 
 # ---------------------------------------------------------------------------

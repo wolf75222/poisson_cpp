@@ -13,6 +13,7 @@
 #include <pybind11/stl.h>
 
 #include "poisson/core/grid.hpp"
+#include "poisson/fv/dielectric.hpp"
 #include "poisson/fv/solver1d.hpp"
 #include "poisson/fv/solver2d.hpp"
 #include "poisson/iter/poisson_cg.hpp"
@@ -124,6 +125,41 @@ uL, uR : float
     Dirichlet values at ``x = 0`` and ``x = L``.
 grid : Grid1D
     Discretization grid.
+
+Returns
+-------
+numpy.ndarray of shape (N,)
+    Potential ``V`` at each node.
+)doc");
+
+  m.def("solve_poisson_1d_dielectric",
+        [](const Eigen::VectorXd& rho, const Eigen::VectorXd& eps_r,
+           double uL, double uR, const poisson::Grid1D& grid, double eps0) {
+          return poisson::fv::solve_poisson_1d(rho, eps_r, uL, uR, grid, eps0);
+        },
+        py::arg("rho"), py::arg("eps_r"), py::arg("uL"), py::arg("uR"),
+        py::arg("grid"), py::arg("eps0") = 1.0,
+        R"doc(
+Finite-volume 1D Poisson with spatially-varying permittivity.
+
+Solves ``eps0 * d/dx[eps_r(x) dV/dx] = -rho`` on a node-centered grid
+with ``V(0) = uL`` and ``V(L) = uR``. The face permittivity is the
+harmonic mean of the two adjacent cell values, which preserves the
+normal component of ``D = eps0 eps_r grad V`` across a dielectric
+interface.
+
+Parameters
+----------
+rho : numpy.ndarray of shape (N,)
+    Charge density at each node.
+eps_r : numpy.ndarray of shape (N,)
+    Relative permittivity at each node. Must be strictly positive.
+uL, uR : float
+    Dirichlet values at ``x = 0`` and ``x = L``.
+grid : Grid1D
+    Discretization grid.
+eps0 : float, optional
+    Vacuum permittivity. Default ``1.0``.
 
 Returns
 -------
