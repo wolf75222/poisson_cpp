@@ -5,7 +5,7 @@
 **C++20 library of Poisson solvers : finite volume, spectral, AMR + multigrid, Conjugate Gradient.**
 
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=cplusplus)
-![Tests](https://img.shields.io/badge/tests-66%20C%2B%2B%20%2B%2050%20Python-brightgreen)
+![Tests](https://img.shields.io/badge/tests-116%2F116-brightgreen)
 ![Build](https://img.shields.io/badge/build-CMake%203.20%2B-064F8C?logo=cmake)
 ![License](https://img.shields.io/badge/license-BSD--3-green)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python)
