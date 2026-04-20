@@ -1,4 +1,4 @@
-# Écrire son propre V-cycle
+# Custom V-cycle
 
 `vcycle_uniform` est suffisant pour la plupart des cas. Quand tu veux
 expérimenter (autre smoother, restriction Galerkin, schedule W-cycle ou
@@ -83,9 +83,9 @@ for cycle in range(15):
 print(f"erreur finale vs exacte : {np.max(np.abs(V - V_exact)):.2e}")
 ```
 
-Tu devrais voir le résidu chuter d'un facteur ~10 à chaque cycle (taux
-typique d'un V-cycle GS bien équilibré). Le résultat final colle à la
-solution `pc.vcycle_uniform` à la précision machine.
+Le résidu chute d'un facteur ~10 à chaque cycle (taux typique d'un
+V-cycle GS bien équilibré). Le résultat final colle à la solution
+`pc.vcycle_uniform` à la précision machine.
 
 ## Ajouter une variante
 

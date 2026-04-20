@@ -131,5 +131,5 @@ np.savetxt("V.csv", V, delimiter=",")            # CSV
 | Reproduction TPs, ω_opt auto | `Solver2D` |
 
 Workflows complets reproduisant TP1/TP3/TP4 du cours : voir
-[Exemples](examples.md). Détail des trade-offs et complexité :
+[Examples](examples.md). Détail des trade-offs et complexité :
 [ALGORITHMS.md](https://github.com/wolf75222/poisson_cpp/blob/main/docs/ALGORITHMS.md).

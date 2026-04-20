@@ -17,7 +17,7 @@ api
 
 ```{toctree}
 :maxdepth: 1
-:caption: Référence C++
+:caption: C++ Reference
 
 C++ API (Doxygen) <https://wolf75222.github.io/poisson_cpp/cpp/>
 ```

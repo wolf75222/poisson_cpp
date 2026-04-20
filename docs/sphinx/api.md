@@ -1,4 +1,4 @@
-# API Python
+# Python API
 
 Référence générée automatiquement depuis le module compilé `poisson_cpp`.
 

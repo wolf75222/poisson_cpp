@@ -1,4 +1,4 @@
-# Exemples
+# Examples
 
 Workflows complets utilisant les bindings poisson_cpp depuis Python.
 Chaque section donne le code minimal et explique ce que retourne le
