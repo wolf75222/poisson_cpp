@@ -7,7 +7,7 @@ import poisson_cpp as pc
 
 Chaque solveur retourne du `numpy.ndarray` standard plus, pour les
 itératifs, un objet *Report* avec le nombre d'itérations et le résidu
-final. Tout est directement exploitable depuis numpy / matplotlib.
+final.
 
 ## Thomas tridiagonal (1D)
 
@@ -67,7 +67,7 @@ print(f"{report.iterations} iter, résidu {report.residual:.2e}")
 ```
 
 **Retour :** tuple `(report, history)`.
-- `V` est mis à jour **en place**, donc disponible directement après l'appel.
+- `V` est mis à jour **en place**.
 - `report` : `CGReport(iterations, residual)` ; `residual` est
   `||r|| / ||b||` final.
 - `history` : `list[float]` du résidu relatif à chaque itération si
@@ -92,8 +92,7 @@ homogène, pas stockées).
 
 ## Exploiter le résultat
 
-Une fois `V` obtenu, c'est un `ndarray` standard — tout numpy/matplotlib
-fonctionne. Recettes courantes pour `Solver2D` (cell-centered) :
+Recettes courantes pour `Solver2D` (cell-centered) :
 
 ```python
 import matplotlib.pyplot as plt

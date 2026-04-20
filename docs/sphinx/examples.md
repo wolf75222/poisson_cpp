@@ -49,9 +49,9 @@ précision (`O(N) * eps_machine * ||V||_inf`).
 `V = uR` à droite), Neumann en y. La solution est une rampe linéaire
 en x indépendante de y.
 
-L'idée pour récupérer l'historique du résidu : appeler `solve_inplace`
-par paquets de quelques itérations, et lire `report.residual` après
-chaque paquet.
+Pour récupérer l'historique du résidu, appeler `solve_inplace` par
+paquets de quelques itérations et lire `report.residual` après chaque
+paquet.
 
 ```python
 N, uL, uR = 64, 0.0, 10.0
@@ -134,8 +134,7 @@ plt.show()
 La pente empirique tombe sur `+2.000` à mieux que 1 % pour `N >= 31`.
 Pour la version *discrète* (mode propre exact du Laplacien 5-points),
 voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
-`~eps_machine`, prouvant que DST inverse exactement le Laplacien
-discret.
+`~eps_machine` (DST inverse exactement le Laplacien discret).
 
 ## Plus loin
 
