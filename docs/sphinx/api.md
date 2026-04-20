@@ -1,8 +1,6 @@
 # API Python
 
 Référence générée automatiquement depuis le module compilé `poisson_cpp`.
-Chaque entrée garde son docstring NumPy-style avec sections
-`Parameters`, `Returns` et signature typée.
 
 ## Grilles
 

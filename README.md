@@ -5,7 +5,7 @@
 **C++20 library of Poisson solvers : finite volume, spectral, AMR + multigrid, Conjugate Gradient.**
 
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=cplusplus)
-![Tests](https://img.shields.io/badge/tests-66%2F66-brightgreen)
+![Tests](https://img.shields.io/badge/tests-66%20C%2B%2B%20%2B%2050%20Python-brightgreen)
 ![Build](https://img.shields.io/badge/build-CMake%203.20%2B-064F8C?logo=cmake)
 ![License](https://img.shields.io/badge/license-BSD--3-green)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python)
@@ -65,7 +65,8 @@ git clone https://github.com/wolf75222/poisson_cpp.git
 cd poisson_cpp
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-ctest --test-dir build                              # 66/66 doit passer
+ctest --test-dir build                              # 66 tests C++ doivent passer
+pytest tests/python                                  # 50 tests Python (après pip install .)
 ```
 
 Options CMake :
@@ -215,7 +216,7 @@ avec `sample` / `xctrace` :
 
 ## Tests
 
-66 tests Catch2, `ctest --test-dir build`. Couvrent :
+66 tests Catch2 côté C++ + 50 tests pytest côté bindings Python. Couvrent :
 
 - Invariants mathématiques (réciprocité de Green, linéarité, symétrie
   de réflexion) à 1e-13.
@@ -224,6 +225,13 @@ avec `sample` / `xctrace` :
 - 4 snapshots JSON vs les notebooks Python à 1e-10.
 - Convergence O(h²) sur un benchmark Fourier (Jackson ch.2).
 - Scaling CG en O(N), cross-check vs DST.
+- Côté Python : workflow AMR + multigrille bout-en-bout, dataclasses,
+  helpers (Morton, harmonic_mean, dump_amr_snapshot).
+
+```bash
+ctest --test-dir build              # C++
+pytest tests/python                 # Python
+```
 
 Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures TP1–TP5),
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (benchmarks A/B + profiling).

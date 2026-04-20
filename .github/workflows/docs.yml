@@ -45,7 +45,13 @@ jobs:
         run: sphinx-build -b html --keep-going docs/sphinx docs/_build/sphinx
 
       - name: Build Doxygen
-        run: doxygen docs/Doxyfile
+        run: |
+          doxygen docs/Doxyfile
+          # Doxygen emits <img src="docs/figures/...png"> in the rendered
+          # README but doesn't copy the images; mirror them under the HTML
+          # output so the relative paths resolve.
+          mkdir -p docs/_build/doxygen/html/docs/figures
+          cp docs/figures/*.png docs/_build/doxygen/html/docs/figures/
 
       - name: Combine sites (Doxygen at /cpp/)
         run: |

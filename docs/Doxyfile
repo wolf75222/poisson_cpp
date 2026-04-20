@@ -1,5 +1,10 @@
 # Doxygen config for poisson_cpp C++ API reference.
-# Run from repo root: doxygen docs/Doxyfile
+# Run from repo root:
+#   doxygen docs/Doxyfile
+#   mkdir -p docs/_build/doxygen/html/docs/figures
+#   cp docs/figures/*.png docs/_build/doxygen/html/docs/figures/
+# The cp step is needed because Doxygen emits the README image tags
+# verbatim (<img src="docs/figures/banner.png">) without copying the files.
 # Output: docs/_build/doxygen/html/
 
 PROJECT_NAME           = "poisson_cpp"
