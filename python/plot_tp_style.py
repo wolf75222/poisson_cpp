@@ -52,7 +52,7 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
-# TP1 — 1D Poisson with Dirichlet BCs.
+# TP1 : 1D Poisson with Dirichlet BCs.
 #
 # Reference problem: zero source, uL ≠ uR. Analytical V(x) is a linear ramp.
 # Validates the FV stencil + Thomas solver at machine precision.
@@ -78,7 +78,7 @@ def tp1() -> None:
     # Cross-check: our Thomas vs scipy's banded solver on the SAME system.
     # If both produce V to within a few ULP of each other, the discrepancy
     # with the analytical ramp is pure round-off accumulation in a direct
-    # tridiagonal solve — not a scheme bug.
+    # tridiagonal solve : not a scheme bug.
     try:
         from scipy.linalg import solve_banded
         # Build the same tridiag system as Solver1D for rho = 0:
@@ -111,7 +111,7 @@ def tp1() -> None:
     axes[0].plot(x, V, "o", ms=3, label="numérique (FV + Thomas)")
     axes[0].plot(x, V_theo, "k--", lw=1, label="analytique")
     axes[0].set(xlabel="x", ylabel="V(x)",
-                title=f"TP1 — Poisson 1D (ρ=0, N={N})")
+                title=f"TP1 : Poisson 1D (ρ=0, N={N})")
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
@@ -138,7 +138,7 @@ def tp1() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TP3 — 2D SOR red-black.
+# TP3 : 2D SOR red-black.
 #
 # Reference problem: uL ≠ uR, zero source, Neumann in y → V must be
 # a linear ramp in x, independent of y. Plot heatmap + mid-line slice +
@@ -186,7 +186,7 @@ def tp3() -> None:
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     im = axes[0].pcolormesh(X, Y, V, shading="auto", cmap="viridis")
-    axes[0].set(title="V(x, y) — FV SOR red-black", xlabel="x", ylabel="y",
+    axes[0].set(title="V(x, y) : FV SOR red-black", xlabel="x", ylabel="y",
                 aspect="equal")
     fig.colorbar(im, ax=axes[0])
 
@@ -207,7 +207,7 @@ def tp3() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TP4 — Spectral DST convergence study.
+# TP4 : Spectral DST convergence study.
 #
 # Manufactured solution: V = sin(πx/Lx)·sin(πy/Ly) => ρ = 2(π/L)² V.
 # Plot error vs h in log-log, expecting slope -2 (O(h²)).
@@ -260,7 +260,7 @@ def tp4() -> None:
     ax.axhline(np.finfo(float).eps * 4, color="gray", ls=":", lw=1,
                label=r"$\approx 4\,\varepsilon_\mathrm{mach}$")
     ax.set(xlabel="h", ylabel=r"$\|V_\mathrm{num} - V_\mathrm{ref}\|_\infty$",
-           title="TP4 — Erreur DST2D vs référence continue / discrète")
+           title="TP4 : Erreur DST2D vs référence continue / discrète")
     ax.grid(alpha=0.3, which="both")
     ax.legend()
     out = FIG_DIR / "tp4_spectral_convergence.png"
@@ -271,33 +271,47 @@ def tp4() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TP5 — AMR quadtree + heterogeneous FV.
+# TP5 : AMR quadtree + heterogeneous FV.
 #
-# Loads a JSON snapshot written by `poisson_demo --problem amr --output ...`.
-# Draws the leaf mesh (Rectangle patches, no fill) and V color-coded.
+# Builds the quadtree directly via the pybind bindings, runs amr_sor,
+# then draws the leaf mesh + V color-coded.
 # ---------------------------------------------------------------------------
 
 def tp5() -> None:
-    # Ensure we have a snapshot; generate one if missing.
-    snap = Path(__file__).resolve().parent.parent / "data" / "snapshots" / "amr.json"
-    if not snap.exists():
-        print(f"[tp5] snapshot missing at {snap}")
-        print("[tp5] run: ./build/examples/poisson_demo --problem amr "
-              f"--Nmin 3 --Nmax 6 --sigma 0.04 --output {snap}")
-        return
+    if not HAVE_PC:
+        raise RuntimeError("Build the pybind module: -DPOISSON_BUILD_PYTHON=ON")
 
-    with open(snap) as f:
-        data = json.load(f)
-    cells = data["cells"]
-    sigma = data["sigma"]
+    L, sigma = 1.0, 0.04
+    level_min, level_max = 3, 6
 
-    xs = np.array([c["x"] for c in cells])
-    ys = np.array([c["y"] for c in cells])
-    hs = np.array([c["h"] for c in cells])
-    Vs = np.array([c["V"] for c in cells])
-    rhos = np.array([c["rho"] for c in cells])
-    levels = np.array([c["level"] for c in cells])
+    def predicate(key):
+        lvl = pc.level_of(key)
+        if lvl >= level_max:
+            return False
+        h = L / (1 << lvl)
+        cx = (pc.i_of(key) + 0.5) * h
+        cy = (pc.j_of(key) + 0.5) * h
+        return ((cx - 0.5) ** 2 + (cy - 0.5) ** 2) < (4 * sigma) ** 2
+
+    def rho_func(x, y):
+        r2 = (x - 0.5) ** 2 + (y - 0.5) ** 2
+        return math.exp(-r2 / (sigma * sigma))
+
+    tree = pc.Quadtree(L, level_min=level_min)
+    tree.build(predicate, level_max=level_max, rho_func=rho_func)
+    arr = pc.extract_arrays(tree)
+    pc.amr_sor(arr, omega=1.85, tol=1e-7, max_iter=20_000)
+
+    # Per-leaf geometry (cell center + size) for plotting and stats.
+    keys = arr.keys
+    levels = np.array([pc.level_of(k) for k in keys])
+    hs = np.array([L / (1 << lv) for lv in levels])
+    xs = np.array([(pc.i_of(k) + 0.5) * h for k, h in zip(keys, hs)])
+    ys = np.array([(pc.j_of(k) + 0.5) * h for k, h in zip(keys, hs)])
+    Vs = np.array(arr.V)
+    rhos = np.array(arr.rho)
     areas = hs ** 2
+    cells = keys  # for the message at the end
 
     # --- Physical coherence checks -----------------------------------------
     # 1. Total integrated charge vs theoretical (Gaussian exp(-r²/σ²)).
@@ -332,7 +346,7 @@ def tp5() -> None:
     pc_ = PatchCollection(rects, facecolor="none", edgecolor="k", linewidth=0.4)
     ax.add_collection(pc_)
     ax.set(xlim=(0, 1), ylim=(0, 1), aspect="equal",
-           title=f"Maillage AMR — {len(cells)} feuilles",
+           title=f"Maillage AMR :{len(cells)} feuilles",
            xlabel="x", ylabel="y")
 
     # Right: V colored.
@@ -367,7 +381,7 @@ def tp5() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TP2 — 1D Poisson with a layered dielectric.
+# TP2 : 1D Poisson with a layered dielectric.
 #
 # No free charge (ρ = 0), so ∇·D = 0  ⇒  D = ε·E is constant across the
 # whole domain, including through interfaces between layers. The potential

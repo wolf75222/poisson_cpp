@@ -291,7 +291,7 @@ center_key = pc.make_key(8, 1 << 7, 1 << 7)
 if tree.is_leaf(center_key):
     print("V au centre :", tree.at(center_key).V)
 
-# 5. Visualisation : V color-coded + bord des feuilles
+# 6. Visualisation : V color-coded + bord des feuilles
 fig, ax = plt.subplots(figsize=(6, 6))
 patches, colors = [], []
 for key, V in zip(arr.keys, arr.V):
