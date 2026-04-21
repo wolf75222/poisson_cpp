@@ -36,6 +36,7 @@ SEPARATE_MEMBER_PAGES  = NO
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_COLORSTYLE        = LIGHT
+HTML_EXTRA_STYLESHEET  = docs/doxygen_custom.css
 GENERATE_TREEVIEW      = YES
 DISABLE_INDEX          = NO
 FULL_SIDEBAR           = NO
