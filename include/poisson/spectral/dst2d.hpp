@@ -12,8 +12,6 @@ namespace poisson::spectral {
 /// The grid has Nx x Ny interior points with
 ///   hx = Lx / (Nx + 1), hy = Ly / (Ny + 1),
 ///   x_i = i * hx for i = 1..Nx, y_j = j * hy for j = 1..Ny.
-/// Convention matches
-/// `CourseOnPoisson/notebooks/TP4bis_Poisson_2D_spectral.ipynb`.
 class DSTSolver2D {
  public:
   DSTSolver2D(int Nx, int Ny, double Lx, double Ly, double eps0 = 1.0);

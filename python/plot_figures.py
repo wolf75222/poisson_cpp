@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-# Plot the poisson_cpp solvers' output in the style of the
-# CourseOnPoisson/notebooks TPs (TP1..TP5).
+# Plot the poisson_cpp solvers' output as validation figures.
 #
 # Uses the pybind11 module `poisson_cpp` directly when available, otherwise
 # falls back to loading JSON snapshots written by `examples/poisson_demo`.
 #
 # Usage:
-#   python3 python/plot_tp_style.py tp1   # 1D Poisson + analytical overlay
-#   python3 python/plot_tp_style.py tp3   # 2D SOR heatmap + slice + conv
-#   python3 python/plot_tp_style.py tp4   # spectral convergence O(h^2)
-#   python3 python/plot_tp_style.py tp5   # AMR quadtree mesh + V
-#   python3 python/plot_tp_style.py all
+#   python3 python/plot_figures.py poisson_1d    # 1D Poisson + analytical overlay
+#   python3 python/plot_figures.py dielectric    # 1D dielectric layers
+#   python3 python/plot_figures.py sor_2d        # 2D SOR heatmap + slice + conv
+#   python3 python/plot_figures.py spectral      # DST spectral convergence O(h^2)
+#   python3 python/plot_figures.py amr           # AMR quadtree mesh + V
+#   python3 python/plot_figures.py all
 #
 # Set PYTHONPATH=build/python before running, or install the module first.
 
@@ -52,13 +52,13 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
-# TP1 : 1D Poisson with Dirichlet BCs.
+# 1D Poisson with Dirichlet BCs.
 #
 # Reference problem: zero source, uL ≠ uR. Analytical V(x) is a linear ramp.
 # Validates the FV stencil + Thomas solver at machine precision.
 # ---------------------------------------------------------------------------
 
-def tp1() -> None:
+def poisson_1d() -> None:
     N, L, uL, uR = 100, 1.0, 10.0, 0.0
 
     if HAVE_PC:
@@ -93,7 +93,7 @@ def tp1() -> None:
         rhs_py = np.zeros(N); rhs_py[0] = uL; rhs_py[-1] = uR
         V_scipy = solve_banded((1, 1), ab, rhs_py)
         cross_err = float(np.max(np.abs(V - V_scipy)))
-        print(f"[tp1]   vs scipy.solve_banded: ‖V_cpp - V_scipy‖∞ = "
+        print(f"[poisson_1d]   vs scipy.solve_banded: ‖V_cpp - V_scipy‖∞ = "
               f"{cross_err:.2e}  (ULP level)")
     except ImportError:
         pass
@@ -111,7 +111,7 @@ def tp1() -> None:
     axes[0].plot(x, V, "o", ms=3, label="numérique (FV + Thomas)")
     axes[0].plot(x, V_theo, "k--", lw=1, label="analytique")
     axes[0].set(xlabel="x", ylabel="V(x)",
-                title=f"TP1 : Poisson 1D (ρ=0, N={N})")
+                title=f"Poisson 1D (ρ=0, N={N})")
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
@@ -131,21 +131,21 @@ def tp1() -> None:
     axes[1].legend(loc="lower right")
     axes[1].grid(alpha=0.3, which="both")
 
-    out = FIG_DIR / "tp1_poisson_1d.png"
+    out = FIG_DIR / "poisson_1d.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp1] L∞ abs = {err_inf:.3e}  L∞ rel = {err_rel.max():.3e}  "
+    print(f"[poisson_1d] L∞ abs = {err_inf:.3e}  L∞ rel = {err_rel.max():.3e}  "
           f"floor ≈ {machine_floor:.2e}  →  {out}")
 
 
 # ---------------------------------------------------------------------------
-# TP3 : 2D SOR red-black.
+# 2D SOR red-black.
 #
 # Reference problem: uL ≠ uR, zero source, Neumann in y → V must be
 # a linear ramp in x, independent of y. Plot heatmap + mid-line slice +
 # residual convergence curve (semilog).
 # ---------------------------------------------------------------------------
 
-def tp3() -> None:
+def sor_2d() -> None:
     N, uL, uR = 64, 0.0, 10.0
 
     if HAVE_PC:
@@ -200,22 +200,22 @@ def tp3() -> None:
                 ylabel=r"$\max |V^{k+1} - V^k|$")
     axes[2].grid(alpha=0.3, which="both")
 
-    out = FIG_DIR / "tp3_sor2d.png"
+    out = FIG_DIR / "sor_2d.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp3] {total} iter, résidu final {resid_final:.2e}, "
+    print(f"[sor_2d] {total} iter, résidu final {resid_final:.2e}, "
           f"err vs ramp {err_x:.2e}, y-std max {y_std:.2e}  →  {out}")
 
 
 # ---------------------------------------------------------------------------
-# TP4 : Spectral DST convergence study.
+# Spectral DST convergence study.
 #
 # Manufactured solution: V = sin(πx/Lx)·sin(πy/Ly) => ρ = 2(π/L)² V.
 # Plot error vs h in log-log, expecting slope -2 (O(h²)).
 # ---------------------------------------------------------------------------
 
-def tp4() -> None:
+def spectral() -> None:
     if not (HAVE_PC and pc.has_fftw3):
-        print("[tp4] requires pybind module built with FFTW3"); return
+        print("[spectral] requires pybind module built with FFTW3"); return
 
     L = 1.0
     Ns = [15, 31, 63, 127, 255, 511]
@@ -260,24 +260,24 @@ def tp4() -> None:
     ax.axhline(np.finfo(float).eps * 4, color="gray", ls=":", lw=1,
                label=r"$\approx 4\,\varepsilon_\mathrm{mach}$")
     ax.set(xlabel="h", ylabel=r"$\|V_\mathrm{num} - V_\mathrm{ref}\|_\infty$",
-           title="TP4 : Erreur DST2D vs référence continue / discrète")
+           title="Erreur DST2D vs référence continue / discrète")
     ax.grid(alpha=0.3, which="both")
     ax.legend()
-    out = FIG_DIR / "tp4_spectral_convergence.png"
+    out = FIG_DIR / "spectral_convergence.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp4] pente empirique = {slope:.3f} (attendu +2.0)")
-    print(f"[tp4] err discrete max = {errs_disc.max():.2e} "
+    print(f"[spectral] pente empirique = {slope:.3f} (attendu +2.0)")
+    print(f"[spectral] err discrete max = {errs_disc.max():.2e} "
           f"(attendu ~ eps_mach)  →  {out}")
 
 
 # ---------------------------------------------------------------------------
-# TP5 : AMR quadtree + heterogeneous FV.
+# AMR quadtree + heterogeneous FV.
 #
 # Builds the quadtree directly via the pybind bindings, runs amr_sor,
 # then draws the leaf mesh + V color-coded.
 # ---------------------------------------------------------------------------
 
-def tp5() -> None:
+def amr() -> None:
     if not HAVE_PC:
         raise RuntimeError("Build the pybind module: -DPOISSON_BUILD_PYTHON=ON")
 
@@ -361,27 +361,27 @@ def tp5() -> None:
            xlabel="x", ylabel="y")
     fig.colorbar(pc_v, ax=ax)
 
-    out = FIG_DIR / "tp5_amr.png"
+    out = FIG_DIR / "amr_gaussian.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
 
-    # Level histogram + stats (TP-style interpretation).
+    # Level histogram + stats.
     n_by_level = {int(lv): int((levels == lv).sum()) for lv in np.unique(levels)}
     uniform = 4 ** max(n_by_level)
     gain = uniform / len(cells)
-    print(f"[tp5] leaves per level: {n_by_level}  (gain ×{gain:.1f})")
-    print(f"[tp5] Q_total num = {Q_num:.4f}  "
+    print(f"[amr] leaves per level: {n_by_level}  (gain ×{gain:.1f})")
+    print(f"[amr] Q_total num = {Q_num:.4f}  "
           f"(théorique πσ² = {Q_theo:.4f}, "
           f"err rel {abs(Q_num-Q_theo)/Q_theo:.1%})")
-    print(f"[tp5] V_peak AMR = {V_peak:.4e} @ ({x_peak:.3f}, {y_peak:.3f})")
+    print(f"[amr] V_peak AMR = {V_peak:.4e} @ ({x_peak:.3f}, {y_peak:.3f})")
     if V_peak_ref is not None:
         rel = abs(V_peak - V_peak_ref) / V_peak_ref
-        print(f"[tp5] V_peak DST 255² = {V_peak_ref:.4e}  → "
+        print(f"[amr] V_peak DST 255² = {V_peak_ref:.4e}  → "
               f"écart AMR vs uniform {rel:.1%}")
-    print(f"[tp5] → {out}")
+    print(f"[amr] → {out}")
 
 
 # ---------------------------------------------------------------------------
-# TP2 : 1D Poisson with a layered dielectric.
+# 1D Poisson with a layered dielectric.
 #
 # No free charge (ρ = 0), so ∇·D = 0  ⇒  D = ε·E is constant across the
 # whole domain, including through interfaces between layers. The potential
@@ -389,7 +389,7 @@ def tp5() -> None:
 # layer. This is a textbook continuity-of-D test (Griffiths ch. 4).
 # ---------------------------------------------------------------------------
 
-def tp2() -> None:
+def dielectric() -> None:
     if not HAVE_PC:
         raise RuntimeError("Build the pybind module: -DPOISSON_BUILD_PYTHON=ON")
     N = 200
@@ -424,7 +424,7 @@ def tp2() -> None:
                                   (0.7, 1.0, "ε_r=2", "palegreen")]:
         if color != "white":
             ax.axvspan(lo, hi, alpha=0.25, color=color, label=label)
-    ax.set(title="TP2 : V(x) avec couches diélectriques",
+    ax.set(title="V(x) avec couches diélectriques",
            xlabel="x", ylabel="V(x)")
     ax.legend(); ax.grid(alpha=0.3)
 
@@ -443,15 +443,16 @@ def tp2() -> None:
                 xlabel="x", ylabel="D")
     axes[2].legend(); axes[2].grid(alpha=0.3)
 
-    out = FIG_DIR / "tp2_dielectric.png"
+    out = FIG_DIR / "dielectric_1d.png"
     fig.tight_layout(); fig.savefig(out, dpi=150); plt.close(fig)
-    print(f"[tp2] D_num in [{D.min():.4f}, {D.max():.4f}]  "
+    print(f"[dielectric] D_num in [{D.min():.4f}, {D.max():.4f}]  "
           f"variation relative {D_var_rel:.2e}  ->  {out}")
 
 
 # ---------------------------------------------------------------------------
 
-_DISPATCH = {"tp1": tp1, "tp2": tp2, "tp3": tp3, "tp4": tp4, "tp5": tp5}
+_DISPATCH = {"poisson_1d": poisson_1d, "dielectric": dielectric,
+             "sor_2d": sor_2d, "spectral": spectral, "amr": amr}
 
 
 def main() -> int:

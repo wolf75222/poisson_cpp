@@ -29,7 +29,7 @@ flowchart TD
         BENCH[benchmarks/bench_solvers<br/>benchmarks/profile_cg]
         TESTS[tests/*.cpp]
         PYMOD[python/poisson_cpp.so]
-        PYSCRIPTS[python/plot_tp_style.py<br/>python/plot_cg.py<br/>python/make_banner.py]
+        PYSCRIPTS[python/plot_figures.py<br/>python/plot_cg.py<br/>python/make_banner.py]
     end
 
     A --> C
@@ -91,7 +91,7 @@ poisson_cpp/
 ├── python/                        # bindings.cpp + plot_*.py
 ├── data/
 │   ├── snapshots/                 # JSON refs (amr.json, amr_scatter.json)
-│   └── reference/                 # TP snapshots dumpés par dump_reference.py
+│   └── reference/                 # snapshots dumpés par dump_reference.py
 └── docs/                          # ARCHITECTURE, RESULTS, PERFORMANCE
     └── figures/                   # PNG produits par python/plot_*.py
 ```
@@ -132,8 +132,7 @@ graph LR
 
 ## Stencil FV hétérogène (AMR)
 
-Dérivé dans `CourseOnPoisson/notebooks/TP5_AMR_Poisson_2D.ipynb` et
-miroité dans `amr::extract_arrays`. Pour une cellule feuille face à un
+Implémenté dans `amr::extract_arrays`. Pour une cellule feuille face à un
 voisin :
 
 ```mermaid

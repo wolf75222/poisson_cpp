@@ -14,7 +14,7 @@ namespace poisson::amr {
 /// finite-volume stencil weights that handle heterogeneous cell sizes at
 /// coarse-fine interfaces and Dirichlet ghost cells at the domain boundary.
 ///
-/// Weight convention (cf. bilan of `TP5_AMR_Poisson_2D.ipynb`):
+/// Weight convention:
 ///   - boundary (Dirichlet V = 0) : diag += 2, off = 0
 ///   - same-level neighbour       : diag += 1, off = 1
 ///   - coarser neighbour          : diag += 2/3, off = 2/3

@@ -9,8 +9,7 @@ namespace poisson {
 ///
 /// The grid has `N` nodes at positions `x_i = i * dx` for i = 0..N-1, with
 /// `x[0] = 0` and `x[N-1] = L`. The first and last nodes carry the Dirichlet
-/// boundary values directly (FD-style). This matches the Python notebooks
-/// `TP1_Poisson_1D.ipynb` and `TP2_Poisson_1D.ipynb`.
+/// boundary values directly (FD-style).
 struct Grid1D {
   double L;      ///< Domain length.
   int N;         ///< Number of nodes (>= 2).
@@ -36,8 +35,7 @@ struct Grid1D {
 /// Cells span the domain `[0, Lx] x [0, Ly]` with `Nx * Ny` cells of size
 /// `dx = Lx/Nx, dy = Ly/Ny`. Cell `(i, j)` has its center at
 /// `((i + 0.5) dx, (j + 0.5) dy)` and Dirichlet values are imposed on the
-/// outer faces. This matches the notebooks `TP3_Poisson_2D.ipynb` and
-/// `TP5_AMR_Poisson_2D.ipynb`.
+/// outer faces.
 struct Grid2D {
   double Lx, Ly;
   int Nx, Ny;

@@ -16,9 +16,6 @@ struct Cell {
 
 /// Cell-centered quadtree on the square domain [0, L] x [0, L], with
 /// Morton-encoded cell keys. Only leaves are stored.
-///
-/// Port of the `leaves` dict and related helpers from
-/// `CourseOnPoisson/notebooks/TP5_AMR_Poisson_2D.ipynb`.
 class Quadtree {
  public:
   /// Build a uniform grid of size 2^level_min at level `level_min`, with

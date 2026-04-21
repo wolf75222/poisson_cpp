@@ -22,9 +22,6 @@ namespace poisson::fv {
 /// V(L) = uR, using the finite-volume 3-point stencil and the harmonic
 /// mean of eps_r at cell faces.
 ///
-/// Port of the variable-permittivity `solve_poisson_1d` in
-/// `CourseOnPoisson/notebooks/TP2_Poisson_1D.ipynb`.
-///
 /// \param rho   Charge density at the N grid nodes.
 /// \param eps_r Relative permittivity per node, shape (N,). Must be > 0.
 /// \param uL    Dirichlet value at x = 0.

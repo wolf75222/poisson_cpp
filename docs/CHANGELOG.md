@@ -33,7 +33,7 @@ Versionnage [SemVer](https://semver.org/lang/fr/).
   bout-en-bout, dataclasses, dump_amr_snapshot, helpers Morton).
 
 ### Changed
-- `python/plot_tp_style.py:tp2` et `:tp5` utilisent désormais les
+- `python/plot_figures.py:dielectric` et `:amr` utilisent désormais les
   bindings Python directement (au lieu d'une ré-implémentation Python ou
   d'un snapshot JSON dumpé par le CLI C++).
 - C++ library compilée avec `-fPIC` pour permettre le link dans la
@@ -50,4 +50,4 @@ Versionnage [SemVer](https://semver.org/lang/fr/).
 ## [0.1.0] - 2026-04-18
 
 Première version : C++20 library, Catch2 tests, CLI `poisson_demo`,
-plot scripts Python pour TP1-TP5.
+plot scripts Python pour les figures de validation.

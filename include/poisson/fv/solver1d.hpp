@@ -12,8 +12,6 @@ namespace poisson::fv {
 /// grids). The discrete system is tridiagonal and solved by the Thomas
 /// algorithm in O(N).
 ///
-/// Port of `solve_poisson_1d` from `CourseOnPoisson/notebooks/TP1_Poisson_1D.ipynb`.
-///
 /// \param rho  Charge density at the N grid nodes.
 /// \param uL   Dirichlet value at x = 0.
 /// \param uR   Dirichlet value at x = L.

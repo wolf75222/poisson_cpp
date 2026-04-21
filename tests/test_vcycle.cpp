@@ -84,6 +84,6 @@ TEST_CASE("Composite V-cycle reduces the AMR residual", "[mg][amr]") {
   const double r1 = amr::residual(arr).cwiseAbs().maxCoeff();
   REQUIRE(r1 < r0);
   // With a non-Galerkin coarse operator the per-cycle reduction factor is
-  // about 0.7 (see TP5 analysis). After 6 cycles we expect ~0.1 * r0.
+  // about 0.7. After 6 cycles we expect ~0.1 * r0.
   REQUIRE(r1 < 0.2 * r0);
 }

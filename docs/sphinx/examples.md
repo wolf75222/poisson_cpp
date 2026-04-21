@@ -4,7 +4,7 @@ Workflows complets utilisant les bindings poisson_cpp depuis Python.
 Chaque section donne le code minimal et explique ce que retourne le
 solveur.
 
-## TP1 : Poisson 1D, comparaison à la solution analytique
+## Poisson 1D, comparaison à la solution analytique
 
 Poisson 1D sans charge entre deux électrodes : on fixe `V(0) = uL` et
 `V(L) = uR`, et on résout `-V''(x) = 0`. Sans source, la solution est
@@ -45,9 +45,9 @@ plt.show()
 L'erreur reste sous `~1e-14` partout, soit la borne de Thomas en double
 précision (`O(N) * eps_machine * ||V||_inf`).
 
-![TP1 : Poisson 1D + erreur](../figures/tp1_poisson_1d.png)
+![Poisson 1D + erreur](../figures/poisson_1d.png)
 
-## TP2 : couches diélectriques 1D et continuité de D
+## Couches diélectriques 1D et continuité de D
 
 Empilement de trois couches diélectriques sur `[0, L]` avec
 `ε_r = 5` pour `x < 0.3`, `ε_r = 1` pour `0.3 ≤ x < 0.7`, `ε_r = 2`
@@ -87,16 +87,16 @@ print(f"D_num ≈ {D.mean():.4f},  D_theo = {D_theo:.4f}")
 `D` reste constant à `~1e-13` près (précision machine) : la moyenne
 harmonique aux faces préserve la composante normale de `D` à travers
 les interfaces. Le code complet avec tracé V(x)/E(x)/D(x) est dans
-[`python/plot_tp_style.py:tp2`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
+[`python/plot_figures.py:dielectric`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_figures.py).
 
-![TP2 : couches diélectriques](../figures/tp2_dielectric.png)
+![Couches diélectriques](../figures/dielectric_1d.png)
 
-## TP3 : SOR 2D + courbe de convergence
+## SOR 2D + courbe de convergence
 
 Poisson 2D sans charge dans un carré `[0, L]²`. Bords gauche et droit
 fixés à `V = uL` et `V = uR` (Dirichlet), bords haut et bas en Neumann
 homogène (`∂V/∂n = 0`). Sans source et avec Neumann en y, la solution
-doit être invariante en y et former la même rampe linéaire qu'au TP1.
+doit être invariante en y et former la même rampe linéaire qu'en 1D.
 
 On en profite pour tracer la décroissance du résidu : on appelle
 `solve_inplace` par paquets de quelques itérations et on lit
@@ -142,9 +142,9 @@ plt.show()
 Avec `omega=-1` et `N=64`, ω_opt ≈ 1.91 et SOR converge en ~600 sweeps
 red+black à `tol=1e-10`. L'écart à la rampe analytique reste sous `1e-9`.
 
-![TP3 : SOR 2D](../figures/tp3_sor2d.png)
+![SOR 2D](../figures/sor_2d.png)
 
-## TP4 : Étude de convergence DST spectrale
+## Étude de convergence DST spectrale
 
 On prend une solution analytique connue `V(x, y) = sin(πx/L) sin(πy/L)`,
 on en déduit la source `-Δ V = 2 (π/L)² V`, puis on vérifie que le
@@ -186,10 +186,10 @@ plt.show()
 
 La pente empirique tombe sur `+2.000` à mieux que 1 % pour `N >= 31`.
 Pour la version *discrète* (mode propre exact du Laplacien 5-points),
-voir `python/plot_tp_style.py:tp4` : l'erreur descend alors à
+voir `python/plot_figures.py:spectral` : l'erreur descend alors à
 `~eps_machine` (DST inverse exactement le Laplacien discret).
 
-![TP4 : convergence DST O(h²)](../figures/tp4_spectral_convergence.png)
+![Convergence DST O(h²)](../figures/spectral_convergence.png)
 
 ## Multigrille uniforme : SOR vs V-cycle
 
@@ -241,7 +241,7 @@ print(f"erreur MG vs exacte : {np.max(np.abs(V_mg - V_exact)):.2e}")
 20 V-cycles MG amènent le résidu sous `1e-10` ; il faudrait des
 milliers de sweeps Gauss-Seidel pour atteindre la même précision.
 
-## TP5 : AMR quadtree sur source localisée
+## AMR quadtree sur source localisée
 
 Pour une source concentrée (ici une gaussienne au centre du domaine), un
 maillage uniforme gaspille des cellules loin du pic. Le quadtree adapte
@@ -323,7 +323,7 @@ sur la grille grossière, pas Galerkin). Pour une réduction plus agressive,
 voir [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py)
 qui résout une scène à 10 charges sur 5000 feuilles.
 
-![TP5 : maillage AMR + V](../figures/tp5_amr.png)
+![Maillage AMR + V](../figures/amr_gaussian.png)
 
 ## CG vs SOR : convergence comparée
 
@@ -380,4 +380,4 @@ variation locale et accélère.
 - Scène AMR multi-charges (10 gaussiennes ±q, 5000 feuilles) :
   [`python/make_banner.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/make_banner.py).
 - Reproductibilité figures `docs/figures/*.png` :
-  [`python/plot_tp_style.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_tp_style.py).
+  [`python/plot_figures.py`](https://github.com/wolf75222/poisson_cpp/blob/main/python/plot_figures.py).

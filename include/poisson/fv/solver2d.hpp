@@ -18,8 +18,6 @@ namespace poisson::fv {
 /// Stencil coefficients (Ve, Vw, Vn, Vs and Vc = Ve + Vw + Vn + Vs) are
 /// precomputed at construction, so repeated `solve()` calls with different
 /// right-hand sides are cheap.
-///
-/// Port of `sor_2d` from `CourseOnPoisson/notebooks/TP3_Poisson_2D.ipynb`.
 struct SORParams {
   /// Over-relaxation factor. If <= 0, the optimal
   /// omega_opt = 2 / (1 + sin(pi / max(Nx, Ny))) is used automatically.

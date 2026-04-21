@@ -11,8 +11,7 @@ namespace poisson::linalg {
 /// outside the matrix). All vectors must have the same length N >= 2.
 ///
 /// Numerically stable for diagonally dominant or symmetric positive definite
-/// matrices (no pivoting). Port of the Python `thomas()` in
-/// `CourseOnPoisson/notebooks/TP1_Poisson_1D.ipynb`.
+/// matrices (no pivoting).
 ///
 /// \param a sub-diagonal, shape (N,). `a(0)` ignored.
 /// \param b diagonal, shape (N,).

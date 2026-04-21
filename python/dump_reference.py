@@ -55,7 +55,7 @@ def solve_poisson_1d(rho, uL, uR, L, eps0=1.0):
 
 
 def solve_poisson_1d_dielectric(rho, eps_r, uL, uR, L, eps0=1.0):
-    """Port of the Python TP2 variable-permittivity solver."""
+    """Variable-permittivity 1D Poisson solver (harmonic mean at faces)."""
     N = len(rho)
     dx = L / (N - 1)
     eps_face = 2.0 * eps_r[1:] * eps_r[:-1] / (eps_r[1:] + eps_r[:-1]) * eps0 / dx**2
@@ -71,8 +71,8 @@ def solve_poisson_1d_dielectric(rho, eps_r, uL, uR, L, eps0=1.0):
 
 
 def sor_2d(N, dx, rho, uL, uR, omega=None, tol=1e-8, max_iter=50000):
-    """Port of TP3 `sor_2d` with constant eps (= 1) and the same Dirichlet/
-    Neumann conventions as the notebook."""
+    """2D SOR reference implementation with constant eps = 1 and Dirichlet x /
+    Neumann y conventions."""
     if omega is None:
         omega = 2.0 / (1.0 + np.sin(np.pi / N))
     # Uniform eps = 1, so Vw = Ve = Vn = Vs = 1/dx^2 for interior faces,
@@ -151,7 +151,7 @@ def dump_dielectric(outdir: pathlib.Path) -> None:
     path.write_text(json.dumps({
         "N": N, "L": L, "uL": uL, "uR": uR, "eps0": 1.0,
         "eps_r": eps_r.tolist(), "rho": rho.tolist(), "V_ref": V.tolist(),
-        "description": "TP2 dielectric layers, no charge, Dirichlet 10/0.",
+        "description": "Dielectric layers, no charge, Dirichlet 10/0.",
     }, indent=2))
     print(f"wrote {path}")
 
@@ -166,7 +166,7 @@ def dump_sor2d(outdir: pathlib.Path) -> None:
     path.write_text(json.dumps({
         "N": N, "L": L, "uL": uL, "uR": uR, "iterations": iters,
         "V_ref": V.tolist(),
-        "description": "TP3 SOR 2D, no charge, linear profile, N=24.",
+        "description": "SOR 2D, no charge, linear profile, N=24.",
     }, indent=2))
     print(f"wrote {path}")
 

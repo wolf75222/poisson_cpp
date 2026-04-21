@@ -630,5 +630,5 @@
       0.9791666665904576
     ]
   ],
-  "description": "TP3 SOR 2D, no charge, linear profile, N=24."
+  "description": "SOR 2D, no charge, linear profile, N=24."
 }

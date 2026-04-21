@@ -192,7 +192,7 @@ demande h ~ σ/10 pour être bien résolue près du centre, mais nulle
 part ailleurs. Un maillage uniforme à cette résolution compte
 (10/σ)² cellules. Un quadtree n'en met autant qu'autour de la
 gaussienne et laisse le reste grossier : 10× moins d'inconnues pour
-la même précision locale (mesuré sur TP5).
+la même précision locale (mesuré sur le cas AMR Gaussienne).
 
 ### Construction
 
@@ -454,7 +454,7 @@ alors `diag(A)` capte la variation locale.
 | Dirichlet homogène 2D, ε uniforme | `spectral::DSTSolver2D` | O(N² log N), pas d'itérations |
 | Dirichlet + Neumann mixte, ε uniforme | `iter::solve_poisson_cg` | O(√κ) iter, ~5× plus rapide que SOR |
 | ε variable forte ou grille anisotrope | `iter::solve_poisson_cg` avec Jacobi | Le préconditionneur capte la variation |
-| Compat TPs (ω_opt auto) | `fv::Solver2D` | Identique aux notebooks |
+| 2D Dirichlet×Neumann (ω_opt auto) | `fv::Solver2D` | Cell-centered FV + SOR red-black |
 | Source localisée, besoin de raffinement | `amr::Quadtree` + `sor` | Réduit le nb d'inconnues ×10 |
 
 ## Références

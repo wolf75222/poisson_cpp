@@ -177,7 +177,7 @@ if pc.has_fftw3:
 ### Plots
 
 ```bash
-python3 python/plot_tp_style.py all           # TP1..TP5 reproduites
+python3 python/plot_figures.py all            # toutes les figures de validation
 python3 python/plot_cg.py                     # convergence CG vs SOR
 python3 python/make_banner.py                 # bannière AMR multi-charges
 ```
@@ -193,10 +193,10 @@ Figures dans [`docs/figures/`](docs/figures/), interprétations dans
 
 |  |  |
 |---|---|
-| ![TP1](docs/figures/tp1_poisson_1d.png) | ![TP4](docs/figures/tp4_spectral_convergence.png) |
-| TP1 : Poisson 1D, erreur L∞ = 2.1×10⁻¹⁴ (précision machine) | TP4 : convergence spectrale, pente log-log = +2.000 |
-| ![CG vs SOR](docs/figures/cg_convergence.png) | ![TP5](docs/figures/tp5_amr.png) |
-| CG : 187 iter / 8 ms vs SOR 1443 / 53 ms | TP5 : AMR sur Gaussienne centrée, 400 feuilles, ×10 vs uniform |
+| ![Poisson 1D](docs/figures/poisson_1d.png) | ![Convergence spectrale](docs/figures/spectral_convergence.png) |
+| Poisson 1D, erreur L∞ = 2.1×10⁻¹⁴ (précision machine) | Convergence spectrale, pente log-log = +2.000 |
+| ![CG vs SOR](docs/figures/cg_convergence.png) | ![AMR Gaussienne](docs/figures/amr_gaussian.png) |
+| CG : 187 iter / 8 ms vs SOR 1443 / 53 ms | AMR sur Gaussienne centrée, 400 feuilles, ×10 vs uniform |
 
 </div>
 
@@ -233,7 +233,7 @@ ctest --test-dir build              # C++
 pytest tests/python                 # Python
 ```
 
-Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures TP1–TP5),
+Détails : [`docs/RESULTS.md`](docs/RESULTS.md) (figures de validation),
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (benchmarks A/B + profiling).
 
 ## License

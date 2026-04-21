@@ -11,8 +11,7 @@ namespace poisson::spectral {
 ///
 /// The grid has N interior points at x_i = i * h for i = 1..N with
 /// h = L / (N + 1). The endpoints x_0 = 0 and x_{N+1} = L are excluded
-/// from the unknowns. Convention matches
-/// `CourseOnPoisson/notebooks/TP4_Poisson_1D_spectral.ipynb`.
+/// from the unknowns.
 ///
 /// The DST-I plan is built once at construction and reused across solves.
 class DSTSolver1D {

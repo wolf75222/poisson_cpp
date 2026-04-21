@@ -36,8 +36,7 @@ void gs_smooth(Eigen::Ref<Eigen::MatrixXd> V,
 /// Recursive V-cycle multigrid on a uniform grid. Returns the updated V.
 ///
 /// Coarsens by factor 2 down to size <= n_min; smoothes more aggressively at
-/// the coarsest level (no "exact solve" yet, just extra GS sweeps). Port of
-/// `vcycle` from `CourseOnPoisson/notebooks/TP5_AMR_Poisson_2D.ipynb`.
+/// the coarsest level (no "exact solve" yet, just extra GS sweeps).
 [[nodiscard]] Eigen::MatrixXd vcycle_uniform(
     Eigen::MatrixXd V,
     const Eigen::MatrixXd& rho,
