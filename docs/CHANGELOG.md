@@ -3,6 +3,17 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versionnage [SemVer](https://semver.org/lang/fr/).
 
+## [Unreleased]
+
+### Changed
+- Doxygen : feuille de style `docs/doxygen_custom.css` plafonne les
+  images de la page principale (bannière + figures de validation) à
+  720 px, évitant qu'elles débordent le conteneur sur écran large.
+- Nomenclature : suppression des libellés TP1..TP5 dans les docs,
+  headers, scripts et snapshots. Figures et fonctions renommées
+  d'après leur contenu (`poisson_1d`, `dielectric`, `sor_2d`,
+  `spectral`, `amr`).
+
 ## [0.2.0] - 2026-04-20
 
 ### Added
