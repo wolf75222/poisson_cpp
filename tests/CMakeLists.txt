@@ -23,7 +23,7 @@ set(TEST_SOURCES
   test_cg.cpp)
 
 if(POISSON_HAVE_FFTW3)
-  list(APPEND TEST_SOURCES test_dst1d.cpp test_dst2d.cpp test_benchmark.cpp)
+  list(APPEND TEST_SOURCES test_dst1d.cpp test_dst2d.cpp test_dft2d.cpp test_benchmark.cpp)
 endif()
 
 add_executable(tests_poisson ${TEST_SOURCES})

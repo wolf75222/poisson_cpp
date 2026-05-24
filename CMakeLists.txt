@@ -110,7 +110,8 @@ set(POISSON_SOURCES
 if(POISSON_HAVE_FFTW3)
   list(APPEND POISSON_SOURCES
     src/spectral/dst1d.cpp
-    src/spectral/dst2d.cpp)
+    src/spectral/dst2d.cpp
+    src/spectral/dft2d.cpp)
 endif()
 
 add_library(poisson ${POISSON_SOURCES})
