@@ -24,10 +24,10 @@ DSTSolver1D::DSTSolver1D(int N, double L, double eps0)
 
   // Plans: DST-I (FFTW_RODFT00). Forward and inverse share the same shape.
   plan_fwd_ = FFTWPlan(::fftw_plan_r2r_1d(N, in_.data(), out_.data(),
-                                          FFTW_RODFT00, FFTW_MEASURE));
+                                          FFTW_RODFT00, FFTW_ESTIMATE));
   plan_inv_ = FFTWPlan(::fftw_plan_r2r_1d(N, in_.data(), out_.data(),
-                                          FFTW_RODFT00, FFTW_MEASURE));
-  // FFTW_MEASURE may reuse the buffers, so `in_` and `out_` may contain junk
+                                          FFTW_RODFT00, FFTW_ESTIMATE));
+  // FFTW_ESTIMATE may reuse the buffers, so `in_` and `out_` may contain junk
   // after planning. Reset them explicitly.
   in_.setZero();
   out_.setZero();

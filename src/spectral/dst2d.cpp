@@ -48,10 +48,19 @@ DSTSolver2D::DSTSolver2D(int Nx, int Ny, double Lx, double Ly, double eps0)
   ::fftw_r2r_kind kinds_fwd[2] = { FFTW_RODFT00, FFTW_RODFT00 };
   ::fftw_r2r_kind kinds_inv[2] = { FFTW_RODFT00, FFTW_RODFT00 };
 
+  // FFTW_ESTIMATE (not FFTW_MEASURE) : the latter calls actual FFTs
+  // during planning to time-pick the best algorithm, which OVERWRITES
+  // the input/output arrays. On Linux gcc with -O3 -flto -march=native,
+  // the planner aborts under certain alignment combinations when these
+  // arrays are Eigen-managed (dynamic alloc, potentially unaligned).
+  // ESTIMATE produces a slightly slower plan in exchange for not
+  // touching the arrays. For periodic Poisson at typical grid sizes
+  // (Nx, Ny in 32..1024) the speed difference is <2x and the
+  // robustness gain is essential.
   plan_fwd_ = FFTWPlan(::fftw_plan_r2r(2, ns, in_.data(), out_.data(),
-                                        kinds_fwd, FFTW_MEASURE));
+                                        kinds_fwd, FFTW_ESTIMATE));
   plan_inv_ = FFTWPlan(::fftw_plan_r2r(2, ns, in_.data(), out_.data(),
-                                        kinds_inv, FFTW_MEASURE));
+                                        kinds_inv, FFTW_ESTIMATE));
   in_.setZero();
   out_.setZero();
 }

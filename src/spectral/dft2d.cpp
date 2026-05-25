@@ -57,12 +57,12 @@ DFTSolver2D::DFTSolver2D(int Nx, int Ny, double Lx, double Ly, double eps0)
   plan_fwd_ = FFTWPlan(::fftw_plan_dft_r2c(
       2, ns, real_buf_.data(),
       reinterpret_cast<::fftw_complex*>(complex_buf_.data()),
-      FFTW_MEASURE));
+      FFTW_ESTIMATE));
   plan_inv_ = FFTWPlan(::fftw_plan_dft_c2r(
       2, ns,
       reinterpret_cast<::fftw_complex*>(complex_buf_.data()),
       real_buf_.data(),
-      FFTW_MEASURE));
+      FFTW_ESTIMATE));
   real_buf_.setZero();
   complex_buf_.setZero();
 }
