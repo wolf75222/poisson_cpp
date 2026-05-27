@@ -42,6 +42,19 @@ Tous matrix-free. Pseudocode de chaque solveur :
 [**docs/ALGORITHMS.md**](docs/ALGORITHMS.md). Conventions de grille
 et schémas modules : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Écosystème
+
+`poisson_cpp` est l'une de quatre bibliothèques C++20 qui forment un écosystème de solveurs PDE :
+
+| Repo | Rôle | Dépend de |
+|---|---|---|
+| **`poisson_cpp`** (ce dépôt) | Solveurs Poisson (Thomas, SOR, CG, DST spectral, AMR + multigrille) | indépendant |
+| [`pde_core_cpp`](https://github.com/wolf75222/pde_core_cpp) | Infrastructure C++ partagée entre les solveurs hyperboliques : mesh, fields templés `<Cell>`, AMR primitives, clustering Berger-Rigoutsos, BC périodique/outflow | indépendant |
+| [`advection_cpp`](https://github.com/wolf75222/advection_cpp) | Advection scalaire + Burgers + advection rotative (MUSCL, WENO5) + Chorin NS incompressible (opt-in, utilise `poisson_cpp` pour la projection de pression) | `pde_core_cpp`, `poisson_cpp` (opt-in) |
+| [`euler_cpp`](https://github.com/wolf75222/euler_cpp) | Euler 2D compressible + viscous NS + sources plasma + Euler-Poisson AMR self-gravity (utilise `poisson_cpp` pour le potentiel gravitationnel) | `pde_core_cpp`, `poisson_cpp` (opt-in) |
+
+Les deux solveurs hyperboliques consomment `poisson_cpp` via `FetchContent` quand leurs options de couplage (`ADVECTION_USE_POISSON`, `EULER_USE_POISSON`) sont activées.
+
 ## Documentation
 
 - Python (Sphinx) : <https://wolf75222.github.io/poisson_cpp/>
